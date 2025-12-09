@@ -1,0 +1,8 @@
+github.com/ebitengine/purego v0.10.0-alpha.2 h1:aUB+wqQ6KpzMMOskWW4jOvxTfJEctVtFxSxUHv3md+8=
+github.com/ebitengine/purego v0.10.0-alpha.2/go.mod h1:iIjxzd6CiRiOG0UyXP+V1+jWqUXVjPKLAI0mRfJZTmQ=
+github.com/mattn/go-sqlite3 v1.14.32 h1:JD12Ag3oLy1zQA+BNn74xRgaBbdhbNIDYvQUEuuErjs=
+github.com/mattn/go-sqlite3 v1.14.32/go.mod h1:Uh1q+B4BYcTPb+yiD3kU8Ct7aC0hY9fxUwlHK0RXw+Y=
+github.com/tursodatabase/turso-go v0.2.2 h1:4cq2OByotaT+ovB5m6F2hYUxDQDyCk0tcD47k0A6Z/s=
+github.com/tursodatabase/turso-go v0.2.2/go.mod h1:UfLSSWFjlyyCcfEgu5mfj4tGMihSZkLBM7ZDuF2ofOE=
+golang.org/x/sys v0.29.0 h1:TPYlXGxvx1MGTn2GiZDhnjPA9wZzZeGKHHmKhHYvgaU=
+golang.org/x/sys v0.29.0/go.mod h1:/VUhepiaJMQUp4+oa/7Zr1D23ma6VTLIYjOOTFZPUcA=
