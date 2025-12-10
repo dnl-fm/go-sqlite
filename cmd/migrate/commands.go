@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"text/template"
 	"time"
 
@@ -165,8 +166,31 @@ func runStatus() error {
 	return nil
 }
 
+// getModuleName reads the module name from go.mod in current directory
+func getModuleName() (string, error) {
+	data, err := os.ReadFile("go.mod")
+	if err != nil {
+		return "", fmt.Errorf("failed to read go.mod: %w", err)
+	}
+
+	for _, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "module ") {
+			return strings.TrimPrefix(line, "module "), nil
+		}
+	}
+
+	return "", fmt.Errorf("module declaration not found in go.mod")
+}
+
 // runCreate generates a new migration file
 func runCreate(name string) error {
+	// Get module name from go.mod
+	moduleName, err := getModuleName()
+	if err != nil {
+		return err
+	}
+
 	// Generate version (timestamp)
 	version := time.Now().Format("20060102150405")
 
@@ -199,9 +223,11 @@ func runCreate(name string) error {
 	data := struct {
 		Version     string
 		Description string
+		ModuleName  string
 	}{
 		Version:     version,
 		Description: name,
+		ModuleName:  moduleName,
 	}
 
 	if err := tmpl.Execute(file, data); err != nil {
@@ -212,8 +238,8 @@ func runCreate(name string) error {
 	fmt.Println()
 	fmt.Println("Next steps:")
 	fmt.Println("1. Edit the migration file and implement the Up and Down functions")
-	fmt.Println("2. Import the migration package in your main.go:")
-	fmt.Println("   import _ \"github.com/fightbulc/go-turso-kit/migrations\"")
+	fmt.Printf("2. Import the migration package in your main.go:\n")
+	fmt.Printf("   import _ \"%s/migrations\"\n", moduleName)
 	fmt.Println("3. Run migrations:")
 	fmt.Println("   migrate up")
 
@@ -237,6 +263,8 @@ import (
 
 	"github.com/fightbulc/go-turso-kit/pkg/migrations"
 )
+
+// Package import path: {{.ModuleName}}/migrations
 
 func init() {
 	migrations.Register(migrations.Migration{

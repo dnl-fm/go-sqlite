@@ -110,31 +110,12 @@ err := repo.WithTx(ctx, func(tx *repository.TxRepository[User, string]) error {
 
 ### 6. Migrations
 
+See [Migrations Guide](#migrations-guide) below for complete CLI and integration details.
+
 ```go
 import "github.com/fightbulc/go-turso-kit/pkg/migrations"
 
-// Register migrations
-migrations.Register(migrations.Migration{
-    Version:     "20251107000001",
-    Description: "create_users_table",
-    Up: func(ctx context.Context, db *sql.DB) error {
-        _, err := db.ExecContext(ctx, `
-            CREATE TABLE users (
-                id TEXT PRIMARY KEY,
-                email TEXT UNIQUE NOT NULL,
-                name TEXT NOT NULL,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )
-        `)
-        return err
-    },
-    Down: func(ctx context.Context, db *sql.DB) error {
-        _, err := db.ExecContext(ctx, `DROP TABLE IF EXISTS users`)
-        return err
-    },
-})
-
-// Run pending migrations
+// Run pending migrations on startup
 migrations.Run(ctx, db)
 
 // Check status
@@ -189,6 +170,183 @@ for _, period := range cycles {
 }
 ```
 
+## Migrations Guide
+
+The toolkit includes a `migrate` CLI for managing database schema migrations.
+
+### Building the CLI
+
+```bash
+# From go-turso-kit repo
+make build
+# Creates: bin/migrate
+```
+
+### CLI Commands
+
+```bash
+# Set database connection
+export DATABASE_URL="file:./app.db"
+
+# Create new migration (auto-detects module from go.mod)
+./bin/migrate create add_users_table
+# Creates: migrations/20251210123456_add_users_table.go
+
+# Run all pending migrations
+./bin/migrate up
+
+# Show migration status
+./bin/migrate status
+
+# Rollback last migration
+./bin/migrate down
+
+# Rollback to specific version
+./bin/migrate down 20251107000001
+```
+
+### Makefile Commands
+
+```bash
+make build              # Build migrate CLI
+make migrate-create name=add_posts_table  # Create new migration
+make migrate-up         # Run pending migrations
+make migrate-down       # Rollback last migration
+make migrate-status     # Show status
+```
+
+### Migration File Structure
+
+Generated migrations follow this pattern:
+
+```go
+package migrations
+
+import (
+    "context"
+    "database/sql"
+
+    "github.com/fightbulc/go-turso-kit/pkg/migrations"
+)
+
+func init() {
+    migrations.Register(migrations.Migration{
+        Version:     "20251210123456",
+        Description: "add_users_table",
+        Up:          up20251210123456,
+        Down:        down20251210123456,
+    })
+}
+
+func up20251210123456(ctx context.Context, db *sql.DB) error {
+    _, err := db.ExecContext(ctx, `
+        CREATE TABLE users (
+            id TEXT PRIMARY KEY,
+            email TEXT UNIQUE NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `)
+    return err
+}
+
+func down20251210123456(ctx context.Context, db *sql.DB) error {
+    _, err := db.ExecContext(ctx, `DROP TABLE users`)
+    return err
+}
+```
+
+### Integrating into Your App
+
+**1. Add the dependency:**
+
+```bash
+go get github.com/fightbulc/go-turso-kit
+```
+
+**2. Get the migrate CLI** (choose one):
+
+```bash
+# Option A: Build from source
+git clone https://github.com/fightbulc/go-turso-kit.git
+cd go-turso-kit && make build
+cp bin/migrate /usr/local/bin/
+
+# Option B: Go install (if available)
+go install github.com/fightbulc/go-turso-kit/cmd/migrate@latest
+```
+
+**3. Create migrations directory and first migration:**
+
+```bash
+mkdir migrations
+migrate create create_users_table
+```
+
+The CLI auto-detects your module name from `go.mod` and generates the correct import path.
+
+**4. Import migrations in your app (blank import triggers registration):**
+
+```go
+package main
+
+import (
+    "context"
+    "database/sql"
+    "log"
+    "os"
+
+    "github.com/fightbulc/go-turso-kit/pkg/migrations"
+    _ "github.com/tursodatabase/turso-go"
+    
+    // Blank import registers all migrations via init()
+    _ "yourapp/migrations"
+)
+
+func main() {
+    db, err := sql.Open("turso", os.Getenv("DATABASE_URL"))
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer db.Close()
+
+    // Run pending migrations on startup
+    ctx := context.Background()
+    if err := migrations.Run(ctx, db); err != nil {
+        log.Fatal("migration failed:", err)
+    }
+
+    // ... rest of your app
+}
+```
+
+### How It Works
+
+1. Each migration file has an `init()` function that calls `migrations.Register()`
+2. Blank importing the migrations package (`_ "yourapp/migrations"`) executes all `init()` functions
+3. `migrations.Run()` checks the `_migrations` table and runs any pending migrations
+4. Migrations are tracked by version (timestamp) in the `_migrations` table
+
+### Programmatic API
+
+```go
+import "github.com/fightbulc/go-turso-kit/pkg/migrations"
+
+// Run all pending migrations
+err := migrations.Run(ctx, db)
+
+// Get migration status
+statuses, err := migrations.Status(ctx, db)
+for _, s := range statuses {
+    fmt.Printf("%s: %s (executed: %v)\n", s.Version, s.Description, s.ExecutedAt != nil)
+}
+
+// Rollback to specific version (or empty string for last)
+err := migrations.Rollback(ctx, db, "20251107000001")
+
+// Get latest executed version
+version, err := migrations.Latest(ctx, db)
+```
+
 ## Package Overview
 
 | Package | Description |
@@ -213,17 +371,29 @@ go run tmp/examples/migrations/main.go
 go run tmp/examples/timezones/main.go
 ```
 
-## Testing
+## Development
+
+### Makefile Commands
+
+```bash
+make build          # Build migrate CLI to bin/
+make test           # Run all tests
+make test-cover     # Run tests with coverage
+make test-verbose   # Run tests with verbose output
+make clean          # Remove build artifacts
+```
+
+### Testing
 
 ```bash
 # Run all tests
-go test ./pkg/...
+make test
 
 # With coverage
-go test ./pkg/... -cover
+make test-cover
 
 # Verbose
-go test ./pkg/... -v
+make test-verbose
 ```
 
 ## Requirements

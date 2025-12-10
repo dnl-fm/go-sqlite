@@ -326,6 +326,39 @@ Run:
 go run tmp/examples/repository/main.go
 ```
 
+## Development
+
+### Makefile Commands
+
+```bash
+make build              # Build migrate CLI to bin/
+make test               # Run all tests
+make test-cover         # Run tests with coverage
+make test-verbose       # Run tests with verbose output
+make clean              # Remove build artifacts
+
+# Migration commands (require DATABASE_URL)
+make migrate-create name=add_posts_table  # Generate new migration
+make migrate-up                            # Run pending migrations
+make migrate-down                          # Rollback last migration
+make migrate-status                        # Show migration status
+```
+
+### Migrate CLI
+
+Located in `cmd/migrate/`. Build with `make build`, outputs to `bin/migrate`.
+
+```bash
+export DATABASE_URL="file:./app.db"
+./bin/migrate create add_users_table    # Creates migrations/YYYYMMDDHHMMSS_add_users_table.go
+./bin/migrate up                         # Run pending migrations
+./bin/migrate status                     # Show status
+./bin/migrate down                       # Rollback last
+./bin/migrate down 20251107000001        # Rollback to version
+```
+
+The `create` command auto-detects module name from `go.mod` for correct import paths.
+
 ## Common Tasks
 
 ### Add new entity
@@ -360,27 +393,53 @@ q, _ := query.Build(
 rows, _ := db.Query(q.SQL(), q.Args()...)
 ```
 
-### Add migration
+### Add migration (CLI)
+
+```bash
+# Generate migration file
+./bin/migrate create add_posts_table
+
+# Edit the generated file, then run
+./bin/migrate up
+```
+
+### Add migration (manual)
 
 ```go
-migrations.Register(migrations.Migration{
-    Version:     "20251210000001",
-    Description: "add_posts_table",
-    Up: func(ctx context.Context, db *sql.DB) error {
-        _, err := db.ExecContext(ctx, `
-            CREATE TABLE posts (
-                id TEXT PRIMARY KEY,
-                title TEXT NOT NULL,
-                content TEXT,
-                author_id TEXT REFERENCES users(id),
-                created_at INTEGER NOT NULL
-            )
-        `)
-        return err
-    },
-    Down: func(ctx context.Context, db *sql.DB) error {
-        _, err := db.ExecContext(ctx, `DROP TABLE IF EXISTS posts`)
-        return err
-    },
-})
+// migrations/20251210000001_add_posts_table.go
+package migrations
+
+import (
+    "context"
+    "database/sql"
+    
+    "github.com/fightbulc/go-turso-kit/pkg/migrations"
+)
+
+func init() {
+    migrations.Register(migrations.Migration{
+        Version:     "20251210000001",
+        Description: "add_posts_table",
+        Up:          up20251210000001,
+        Down:        down20251210000001,
+    })
+}
+
+func up20251210000001(ctx context.Context, db *sql.DB) error {
+    _, err := db.ExecContext(ctx, `
+        CREATE TABLE posts (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            content TEXT,
+            author_id TEXT REFERENCES users(id),
+            created_at INTEGER NOT NULL
+        )
+    `)
+    return err
+}
+
+func down20251210000001(ctx context.Context, db *sql.DB) error {
+    _, err := db.ExecContext(ctx, `DROP TABLE IF EXISTS posts`)
+    return err
+}
 ```
