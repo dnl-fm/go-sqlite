@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/fightbulc/go-turso-kit/pkg/query"
-	_ "github.com/tursodatabase/turso-go"
+	_ "turso.tech/database/tursogo"
 )
 
 func TestWithTx_Commit(t *testing.T) {

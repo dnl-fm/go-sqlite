@@ -11,7 +11,7 @@ import (
 func TestOpen(t *testing.T) {
 	t.Run("opens in-memory database", func(t *testing.T) {
 		ctx := context.Background()
-		db, err := Open(ctx, "file::memory:")
+		db, err := Open(ctx, ":memory:")
 
 		if err != nil {
 			t.Fatalf("failed to open database: %v", err)
@@ -22,8 +22,8 @@ func TestOpen(t *testing.T) {
 			t.Fatal("expected non-nil database")
 		}
 
-		if db.Path() != "file::memory:" {
-			t.Errorf("expected path 'file::memory:', got %s", db.Path())
+		if db.Path() != ":memory:" {
+			t.Errorf("expected path ':memory:', got %s", db.Path())
 		}
 	})
 
@@ -40,7 +40,7 @@ func TestOpen(t *testing.T) {
 		ctx := context.Background()
 		cfg := DefaultConfig().WithMaxOpenConns(50).WithMaxIdleConns(10)
 
-		db, err := Open(ctx, "file::memory:", WithConfig(cfg))
+		db, err := Open(ctx, ":memory:", WithConfig(cfg))
 		if err != nil {
 			t.Fatalf("failed to open database: %v", err)
 		}
@@ -57,7 +57,7 @@ func TestOpen(t *testing.T) {
 
 	t.Run("returns error for nil config", func(t *testing.T) {
 		ctx := context.Background()
-		_, err := Open(ctx, "file::memory:", WithConfig(nil))
+		_, err := Open(ctx, ":memory:", WithConfig(nil))
 
 		if !errors.Is(err, ErrInvalidConfig) {
 			t.Errorf("expected ErrInvalidConfig, got %v", err)
@@ -68,7 +68,7 @@ func TestOpen(t *testing.T) {
 func TestClose(t *testing.T) {
 	t.Run("closes database successfully", func(t *testing.T) {
 		ctx := context.Background()
-		db, err := Open(ctx, "file::memory:")
+		db, err := Open(ctx, ":memory:")
 		if err != nil {
 			t.Fatalf("failed to open database: %v", err)
 		}
@@ -81,7 +81,7 @@ func TestClose(t *testing.T) {
 
 	t.Run("returns error when closing already closed database", func(t *testing.T) {
 		ctx := context.Background()
-		db, err := Open(ctx, "file::memory:")
+		db, err := Open(ctx, ":memory:")
 		if err != nil {
 			t.Fatalf("failed to open database: %v", err)
 		}
@@ -98,7 +98,7 @@ func TestClose(t *testing.T) {
 func TestExec(t *testing.T) {
 	t.Run("creates table", func(t *testing.T) {
 		ctx := context.Background()
-		db, err := Open(ctx, "file::memory:")
+		db, err := Open(ctx, ":memory:")
 		if err != nil {
 			t.Fatalf("failed to open database: %v", err)
 		}
@@ -119,7 +119,7 @@ func TestExec(t *testing.T) {
 
 	t.Run("inserts data", func(t *testing.T) {
 		ctx := context.Background()
-		db, err := Open(ctx, "file::memory:")
+		db, err := Open(ctx, ":memory:")
 		if err != nil {
 			t.Fatalf("failed to open database: %v", err)
 		}
@@ -153,7 +153,7 @@ func TestExec(t *testing.T) {
 
 	t.Run("updates data", func(t *testing.T) {
 		ctx := context.Background()
-		db, err := Open(ctx, "file::memory:")
+		db, err := Open(ctx, ":memory:")
 		if err != nil {
 			t.Fatalf("failed to open database: %v", err)
 		}
@@ -175,7 +175,7 @@ func TestExec(t *testing.T) {
 
 	t.Run("deletes data", func(t *testing.T) {
 		ctx := context.Background()
-		db, err := Open(ctx, "file::memory:")
+		db, err := Open(ctx, ":memory:")
 		if err != nil {
 			t.Fatalf("failed to open database: %v", err)
 		}
@@ -197,7 +197,7 @@ func TestExec(t *testing.T) {
 
 	t.Run("returns error when database is closed", func(t *testing.T) {
 		ctx := context.Background()
-		db, err := Open(ctx, "file::memory:")
+		db, err := Open(ctx, ":memory:")
 		if err != nil {
 			t.Fatalf("failed to open database: %v", err)
 		}
@@ -212,7 +212,7 @@ func TestExec(t *testing.T) {
 
 	t.Run("respects context cancellation", func(t *testing.T) {
 		ctx := context.Background()
-		db, err := Open(ctx, "file::memory:")
+		db, err := Open(ctx, ":memory:")
 		if err != nil {
 			t.Fatalf("failed to open database: %v", err)
 		}
@@ -231,7 +231,7 @@ func TestExec(t *testing.T) {
 func TestQuery(t *testing.T) {
 	t.Run("queries multiple rows", func(t *testing.T) {
 		ctx := context.Background()
-		db, err := Open(ctx, "file::memory:")
+		db, err := Open(ctx, ":memory:")
 		if err != nil {
 			t.Fatalf("failed to open database: %v", err)
 		}
@@ -269,7 +269,7 @@ func TestQuery(t *testing.T) {
 
 	t.Run("returns error when database is closed", func(t *testing.T) {
 		ctx := context.Background()
-		db, err := Open(ctx, "file::memory:")
+		db, err := Open(ctx, ":memory:")
 		if err != nil {
 			t.Fatalf("failed to open database: %v", err)
 		}
@@ -286,7 +286,7 @@ func TestQuery(t *testing.T) {
 func TestQueryOne(t *testing.T) {
 	t.Run("queries single row", func(t *testing.T) {
 		ctx := context.Background()
-		db, err := Open(ctx, "file::memory:")
+		db, err := Open(ctx, ":memory:")
 		if err != nil {
 			t.Fatalf("failed to open database: %v", err)
 		}
@@ -314,7 +314,7 @@ func TestQueryOne(t *testing.T) {
 
 	t.Run("returns ErrNoRows when no row found", func(t *testing.T) {
 		ctx := context.Background()
-		db, err := Open(ctx, "file::memory:")
+		db, err := Open(ctx, ":memory:")
 		if err != nil {
 			t.Fatalf("failed to open database: %v", err)
 		}
@@ -337,7 +337,7 @@ func TestQueryOne(t *testing.T) {
 func TestBeginTx(t *testing.T) {
 	t.Run("executes transaction successfully", func(t *testing.T) {
 		ctx := context.Background()
-		db, err := Open(ctx, "file::memory:")
+		db, err := Open(ctx, ":memory:")
 		if err != nil {
 			t.Fatalf("failed to open database: %v", err)
 		}
@@ -369,7 +369,7 @@ func TestBeginTx(t *testing.T) {
 
 	t.Run("rolls back transaction", func(t *testing.T) {
 		ctx := context.Background()
-		db, err := Open(ctx, "file::memory:")
+		db, err := Open(ctx, ":memory:")
 		if err != nil {
 			t.Fatalf("failed to open database: %v", err)
 		}
@@ -401,7 +401,7 @@ func TestBeginTx(t *testing.T) {
 
 	t.Run("returns error when database is closed", func(t *testing.T) {
 		ctx := context.Background()
-		db, err := Open(ctx, "file::memory:")
+		db, err := Open(ctx, ":memory:")
 		if err != nil {
 			t.Fatalf("failed to open database: %v", err)
 		}
@@ -525,7 +525,7 @@ func TestConnectionPool(t *testing.T) {
 			WithMaxIdleConns(8).
 			WithConnMaxLifetime(3 * time.Minute)
 
-		db, err := Open(ctx, "file::memory:", WithConfig(cfg))
+		db, err := Open(ctx, ":memory:", WithConfig(cfg))
 		if err != nil {
 			t.Fatalf("failed to open database: %v", err)
 		}

@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/fightbulc/go-turso-kit/pkg/migrations"
-	_ "github.com/tursodatabase/turso-go"
+	_ "turso.tech/database/tursogo"
 )
 
 // getDatabaseURL returns the database URL from environment

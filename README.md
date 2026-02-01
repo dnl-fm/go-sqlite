@@ -36,7 +36,7 @@ type User struct {
 ```go
 import (
     "database/sql"
-    _ "github.com/tursodatabase/turso-go"
+    _ "turso.tech/database/tursogo"
     "github.com/fightbulc/go-turso-kit/pkg/repository"
 )
 
@@ -296,7 +296,7 @@ import (
     "os"
 
     "github.com/fightbulc/go-turso-kit/pkg/migrations"
-    _ "github.com/tursodatabase/turso-go"
+    _ "turso.tech/database/tursogo"
     
     // Blank import registers all migrations via init()
     _ "yourapp/migrations"
@@ -399,7 +399,23 @@ make test-verbose
 ## Requirements
 
 - Go 1.21+
-- [turso-go](https://github.com/tursodatabase/turso-go) driver
+- [tursogo](https://github.com/tursodatabase/turso/tree/main/bindings/go) driver (v0.4.4+)
+
+## Driver Notes
+
+The new `turso.tech/database/tursogo` driver (v0.4.4) supports additional DSN options:
+
+```
+:memory:?vfs=io_uring&async=1&_busy_timeout=5000
+```
+
+| Option | Values | Description |
+|--------|--------|-------------|
+| `vfs` | `memory`, `syscall`, `io_uring` | Virtual filesystem backend |
+| `async` | `0`, `1` | Enable async I/O mode |
+| `_busy_timeout` | milliseconds | Busy timeout for locked databases |
+
+**⚠️ io_uring status (Feb 2026):** Benchmarks show `io_uring` is 20-40% slower than `syscall` and crashes under high concurrency. Stick with the default `syscall` VFS until the driver matures.
 
 ## License
 

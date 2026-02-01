@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/tursodatabase/turso-go"
+	_ "turso.tech/database/tursogo"
 )
 
 // setupTestDB creates an in-memory database for testing

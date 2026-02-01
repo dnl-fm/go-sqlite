@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	_ "github.com/tursodatabase/turso-go"
+	_ "turso.tech/database/tursogo"
 )
 
 // Benchmarks for scan package

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"sync"
 
-	_ "github.com/tursodatabase/turso-go"
+	_ "turso.tech/database/tursogo"
 )
 
 // Database wraps sql.DB and provides context-aware operations

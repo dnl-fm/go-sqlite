@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"testing"
 
-	_ "github.com/tursodatabase/turso-go"
+	_ "turso.tech/database/tursogo"
 )
 
 func TestIntegration_Insert(t *testing.T) {
