@@ -18,13 +18,13 @@ SQLite/Turso toolkit providing database abstractions, migrations, generic reposi
 - [x] Extract pkg/database/database_test.go → Test patterns
       Output: specs/database.md
 
-## Phase 2: Query Building
+## Phase 2: Query Building ✅ COMPLETED
 
-- [ ] Extract pkg/query/query.go → Query type, BuildDirect/BuildConverted, DIRECT/CONVERTED modes
-- [ ] Extract pkg/query/params.go → ExtractParams, UnusedParams, IsValidParamName
-- [ ] Extract pkg/query/query_test.go → Unit tests
-- [ ] Extract pkg/query/integration_test.go → Integration tests
-- [ ] Extract pkg/query/benchmark_test.go → Performance benchmarks
+- [x] Extract pkg/query/query.go → Query type, Build, New (note: README incorrectly documents BuildDirect/BuildConverted)
+- [x] Extract pkg/query/params.go → ExtractParams, IsValidParamName (note: UnusedParams doesn't exist)
+- [x] Extract pkg/query/query_test.go → Unit tests
+- [x] Extract pkg/query/integration_test.go → Integration tests
+- [x] Extract pkg/query/benchmark_test.go → Performance benchmarks
       Output: specs/query.md
 
 ## Phase 3: Row Scanning
