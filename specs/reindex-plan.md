@@ -34,7 +34,7 @@ SQLite/Turso toolkit providing database abstractions, migrations, generic reposi
 - [x] Extract pkg/scan/benchmark_test.go → Performance benchmarks
       Output: specs/scan.md
 
-## Phase 4: Repository Pattern
+## Phase 4: Repository Pattern ✅ COMPLETED
 
 - [x] Extract pkg/repository/repository.go → Repository[T, ID], CRUD operations (no Entity interface)
 - [x] Extract pkg/repository/transaction.go → TxRepository, WithTx, automatic rollback
@@ -43,14 +43,14 @@ SQLite/Turso toolkit providing database abstractions, migrations, generic reposi
 - [x] Extract pkg/repository/benchmark_test.go → Performance benchmarks
       Output: specs/repository.md
 
-## Phase 5: Migration System
+## Phase 5: Migration System ✅ COMPLETED
 
-- [ ] Extract pkg/migrations/migrations.go → Migration type, Register, Run, Rollback, Status
-- [ ] Extract pkg/migrations/runner.go → Runner implementation
-- [ ] Extract pkg/migrations/migrations_test.go → Test patterns
-- [ ] Extract cmd/migrate/main.go → CLI entry point, printUsage
-- [ ] Extract cmd/migrate/commands.go → runUp, runDown, runStatus, runCreate
-- [ ] Extract migrations/20251107005645_example_users_table.go → Example migration pattern
+- [x] Extract pkg/migrations/migrations.go → Migration type, Register, Run, Rollback, Status
+- [x] Extract pkg/migrations/runner.go → Runner implementation
+- [x] Extract pkg/migrations/migrations_test.go → Test patterns
+- [x] Extract cmd/migrate/main.go → CLI entry point, printUsage
+- [x] Extract cmd/migrate/commands.go → runUp, runDown, runStatus, runCreate
+- [x] Extract migrations/20251107005645_example_users_table.go → Example migration pattern
       Output: specs/migrations.md
 
 ## Phase 6: ID Generation
