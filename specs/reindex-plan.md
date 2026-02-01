@@ -61,14 +61,14 @@ SQLite/Turso toolkit providing database abstractions, migrations, generic reposi
 - [x] Extract pkg/id/ulid/ulid_test.go → Tests and benchmarks
       Output: specs/id.md
 
-## Phase 7: Zeit (Time Utilities)
+## Phase 7: Zeit (Time Utilities) ✅ COMPLETED
 
-- [ ] Extract pkg/zeit/zeit.go → Zeit type, Now, New, FromUser, FromDatabase, ToDatabase, ToUser
-- [ ] Extract pkg/zeit/duration.go → ZeitDuration, Days, BusinessDays
-- [ ] Extract pkg/zeit/billing.go → BillingInterval, Cycles, Period
-- [ ] Extract pkg/zeit/zeit_test.go → Core tests
-- [ ] Extract pkg/zeit/duration_test.go → Duration tests
-- [ ] Extract pkg/zeit/billing_test.go → Billing cycle tests
+- [x] Extract pkg/zeit/zeit.go → Zeit type, Now, New, FromUser, FromDatabase, ToDatabase, ToUser
+- [x] Extract pkg/zeit/duration.go → ZeitDuration, Days, BusinessDays
+- [x] Extract pkg/zeit/billing.go → BillingInterval, Cycles, Period
+- [x] Extract pkg/zeit/zeit_test.go → Core tests
+- [x] Extract pkg/zeit/duration_test.go → Duration tests
+- [x] Extract pkg/zeit/billing_test.go → Billing cycle tests
       Output: specs/zeit.md
 
 ## Phase 8: Examples

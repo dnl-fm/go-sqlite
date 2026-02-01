@@ -12,3 +12,4 @@ Project: **go-sqlite**
 | [repository.md](./repository.md) | `pkg/repository/` | Documented | Generic CRUD, transactions, query-based operations |
 | [migrations.md](./migrations.md) | `pkg/migrations/`, `cmd/migrate/` | Documented | Schema migrations, version tracking, CLI tool |
 | [id.md](./id.md) | `pkg/id/` | Documented | NanoID and ULID generation, URL-safe and time-sortable IDs |
+| [zeit.md](./zeit.md) | `pkg/zeit/` | Documented | Timezone-aware time, business days, billing cycles, duration |
