@@ -36,11 +36,11 @@ SQLite/Turso toolkit providing database abstractions, migrations, generic reposi
 
 ## Phase 4: Repository Pattern
 
-- [ ] Extract pkg/repository/repository.go → Repository[T], Entity interface, CRUD operations
-- [ ] Extract pkg/repository/transaction.go → Transaction support, automatic rollback
-- [ ] Extract pkg/repository/repository_test.go → Unit tests
-- [ ] Extract pkg/repository/transaction_test.go → Transaction tests
-- [ ] Extract pkg/repository/benchmark_test.go → Performance benchmarks
+- [x] Extract pkg/repository/repository.go → Repository[T, ID], CRUD operations (no Entity interface)
+- [x] Extract pkg/repository/transaction.go → TxRepository, WithTx, automatic rollback
+- [x] Extract pkg/repository/repository_test.go → Unit tests
+- [x] Extract pkg/repository/transaction_test.go → Transaction tests
+- [x] Extract pkg/repository/benchmark_test.go → Performance benchmarks
       Output: specs/repository.md
 
 ## Phase 5: Migration System
