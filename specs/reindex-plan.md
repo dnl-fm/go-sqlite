@@ -53,12 +53,12 @@ SQLite/Turso toolkit providing database abstractions, migrations, generic reposi
 - [x] Extract migrations/20251107005645_example_users_table.go → Example migration pattern
       Output: specs/migrations.md
 
-## Phase 6: ID Generation
+## Phase 6: ID Generation ✅ COMPLETED
 
-- [ ] Extract pkg/id/nanoid/nanoid.go → New, NewWithConfig
-- [ ] Extract pkg/id/nanoid/nanoid_test.go → Tests
-- [ ] Extract pkg/id/ulid/ulid.go → New, ULID format
-- [ ] Extract pkg/id/ulid/ulid_test.go → Tests
+- [x] Extract pkg/id/nanoid/nanoid.go → New, NewWithLength, Parse, NanoID type
+- [x] Extract pkg/id/nanoid/nanoid_test.go → Tests and benchmarks
+- [x] Extract pkg/id/ulid/ulid.go → New, Parse, ULID type with prefix support
+- [x] Extract pkg/id/ulid/ulid_test.go → Tests and benchmarks
       Output: specs/id.md
 
 ## Phase 7: Zeit (Time Utilities)
