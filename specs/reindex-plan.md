@@ -27,11 +27,11 @@ SQLite/Turso toolkit providing database abstractions, migrations, generic reposi
 - [x] Extract pkg/query/benchmark_test.go → Performance benchmarks
       Output: specs/query.md
 
-## Phase 3: Row Scanning
+## Phase 3: Row Scanning ✅ COMPLETED
 
-- [ ] Extract pkg/scan/scan.go → Row[T], All[T], One[T] generic functions, structCache, fieldInfo
-- [ ] Extract pkg/scan/scan_test.go → Test patterns
-- [ ] Extract pkg/scan/benchmark_test.go → Performance benchmarks
+- [x] Extract pkg/scan/scan.go → Row[T], All[T], One[T] generic functions, structCache, fieldInfo
+- [x] Extract pkg/scan/scan_test.go → Test patterns
+- [x] Extract pkg/scan/benchmark_test.go → Performance benchmarks
       Output: specs/scan.md
 
 ## Phase 4: Repository Pattern
