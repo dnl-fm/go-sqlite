@@ -13,3 +13,4 @@ Project: **go-sqlite**
 | [migrations.md](./migrations.md) | `pkg/migrations/`, `cmd/migrate/` | Documented | Schema migrations, version tracking, CLI tool |
 | [id.md](./id.md) | `pkg/id/` | Documented | NanoID and ULID generation, URL-safe and time-sortable IDs |
 | [zeit.md](./zeit.md) | `pkg/zeit/` | Documented | Timezone-aware time, business days, billing cycles, duration |
+| [examples.md](./examples.md) | `tmp/examples/` | Documented | Working examples: repository, transactions, migrations, zeit |

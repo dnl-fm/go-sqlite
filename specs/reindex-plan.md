@@ -71,12 +71,12 @@ SQLite/Turso toolkit providing database abstractions, migrations, generic reposi
 - [x] Extract pkg/zeit/billing_test.go → Billing cycle tests
       Output: specs/zeit.md
 
-## Phase 8: Examples
+## Phase 8: Examples ✅ COMPLETED
 
-- [ ] Extract tmp/examples/migrations/main.go → Programmatic migration usage
-- [ ] Extract tmp/examples/repository/main.go → Repository CRUD example
-- [ ] Extract tmp/examples/timezones/main.go → Zeit usage example
-- [ ] Extract tmp/examples/transactions/main.go → Transaction handling
+- [x] Extract tmp/examples/migrations/main.go → Programmatic migration usage
+- [x] Extract tmp/examples/repository/main.go → Repository CRUD example
+- [x] Extract tmp/examples/timezones/main.go → Zeit usage example
+- [x] Extract tmp/examples/transactions/main.go → Transaction handling
       Output: specs/examples.md
 
 ## Phase Final: Synthesis
