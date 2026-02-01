@@ -1,6 +1,6 @@
 # Specifications Index
 
-Project: **go-sqlite**
+Project: **go-turso-kit** (`github.com/fightbulc/go-turso-kit`)
 
 ## Active
 
@@ -14,3 +14,55 @@ Project: **go-sqlite**
 | [id.md](./id.md) | `pkg/id/` | Documented | NanoID and ULID generation, URL-safe and time-sortable IDs |
 | [zeit.md](./zeit.md) | `pkg/zeit/` | Documented | Timezone-aware time, business days, billing cycles, duration |
 | [examples.md](./examples.md) | `tmp/examples/` | Documented | Working examples: repository, transactions, migrations, zeit |
+
+## Package Dependencies
+
+```
+┌─────────────┐
+│  database   │ ─ Turso/SQLite connection (standalone)
+└─────────────┘
+
+┌─────────────┐
+│    query    │ ─ Named param → positional (standalone)
+└─────────────┘
+
+┌─────────────┐
+│    scan     │ ─ Row → struct mapping (standalone)
+└─────────────┘
+
+┌─────────────┐     ┌───────┐     ┌──────┐
+│ repository  │────▶│ query │     │ scan │
+└─────────────┘     └───────┘     └──────┘
+       │                              ▲
+       └──────────────────────────────┘
+
+┌─────────────┐
+│ migrations  │ ─ Schema versioning (standalone)
+└─────────────┘
+
+┌─────────────┐
+│    zeit     │ ─ Timezone utilities (standalone)
+└─────────────┘
+
+┌─────────────┐
+│     id      │ ─ NanoID + ULID (standalone)
+│  ├─ nanoid  │
+│  └─ ulid    │
+└─────────────┘
+```
+
+**Key relationship:** `repository` uses `query` for param conversion and `scan` for row-to-struct mapping.
+
+## Coverage
+
+All packages documented:
+- `pkg/database/` ✓
+- `pkg/query/` ✓
+- `pkg/scan/` ✓
+- `pkg/repository/` ✓
+- `pkg/migrations/` ✓
+- `pkg/zeit/` ✓
+- `pkg/id/nanoid/` ✓
+- `pkg/id/ulid/` ✓
+- `cmd/migrate/` ✓ (in migrations.md)
+- `tmp/examples/` ✓
