@@ -3,10 +3,11 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"testing"
 
 	"github.com/fightbulc/go-turso-kit/pkg/query"
-	_ "turso.tech/database/tursogo"
+	_ "modernc.org/sqlite"
 )
 
 type testUser struct {
@@ -18,7 +19,7 @@ type testUser struct {
 func setupTestDB(t *testing.T) *sql.DB {
 	t.Helper()
 
-	db, err := sql.Open("turso", ":memory:")
+	db, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}
@@ -92,7 +93,7 @@ func TestFindByID_NotFound(t *testing.T) {
 	ctx := context.Background()
 
 	_, err := repo.FindByID(ctx, "nonexistent")
-	if err != ErrNotFound {
+	if !errors.Is(err, ErrNotFound) {
 		t.Errorf("expected ErrNotFound, got %v", err)
 	}
 }
@@ -372,7 +373,7 @@ func TestDelete(t *testing.T) {
 
 	// Verify delete - only user 1 should be gone
 	_, err = repo.FindByID(ctx, "1")
-	if err != ErrNotFound {
+	if !errors.Is(err, ErrNotFound) {
 		t.Errorf("expected ErrNotFound for user 1, got %v", err)
 	}
 
@@ -408,7 +409,7 @@ func TestDeleteByID(t *testing.T) {
 
 	// Verify delete
 	_, err = repo.FindByID(ctx, "1")
-	if err != ErrNotFound {
+	if !errors.Is(err, ErrNotFound) {
 		t.Errorf("expected ErrNotFound, got %v", err)
 	}
 }
@@ -421,7 +422,7 @@ func TestDeleteByID_NotFound(t *testing.T) {
 	ctx := context.Background()
 
 	err := repo.DeleteByID(ctx, "nonexistent")
-	if err != ErrNotFound {
+	if !errors.Is(err, ErrNotFound) {
 		t.Errorf("expected ErrNotFound, got %v", err)
 	}
 }
@@ -431,27 +432,27 @@ func TestNilDB(t *testing.T) {
 	ctx := context.Background()
 
 	_, err := repo.FindByID(ctx, "1")
-	if err != ErrNilDB {
+	if !errors.Is(err, ErrNilDB) {
 		t.Errorf("expected ErrNilDB, got %v", err)
 	}
 
 	_, err = repo.FindAll(ctx)
-	if err != ErrNilDB {
+	if !errors.Is(err, ErrNilDB) {
 		t.Errorf("expected ErrNilDB, got %v", err)
 	}
 
 	_, err = repo.Count(ctx)
-	if err != ErrNilDB {
+	if !errors.Is(err, ErrNilDB) {
 		t.Errorf("expected ErrNilDB, got %v", err)
 	}
 
 	_, err = repo.Exists(ctx, "1")
-	if err != ErrNilDB {
+	if !errors.Is(err, ErrNilDB) {
 		t.Errorf("expected ErrNilDB, got %v", err)
 	}
 
 	err = repo.DeleteByID(ctx, "1")
-	if err != ErrNilDB {
+	if !errors.Is(err, ErrNilDB) {
 		t.Errorf("expected ErrNilDB, got %v", err)
 	}
 }

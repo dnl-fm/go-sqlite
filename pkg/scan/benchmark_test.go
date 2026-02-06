@@ -3,9 +3,10 @@ package scan
 import (
 	"database/sql"
 	"fmt"
+	"strconv"
 	"testing"
 
-	_ "turso.tech/database/tursogo"
+	_ "modernc.org/sqlite"
 )
 
 // Benchmarks for scan package
@@ -17,7 +18,7 @@ func BenchmarkRow(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		rows, _ := db.Query("SELECT * FROM users WHERE id = '0'")
 		_, err := Row[testUser](rows)
 		rows.Close()
@@ -40,13 +41,15 @@ func BenchmarkAll_10000(b *testing.B) {
 }
 
 func benchmarkAll(b *testing.B, count int) {
+	b.Helper()
+
 	db := setupBenchDB(b, count)
 	defer db.Close()
 
 	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		rows, _ := db.Query("SELECT * FROM users")
 		users, err := All[testUser](rows)
 		rows.Close()
@@ -66,7 +69,7 @@ func BenchmarkOne(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		rows, _ := db.Query("SELECT * FROM users WHERE id = '0'")
 		_, err := One[testUser](rows)
 		rows.Close()
@@ -85,14 +88,15 @@ func BenchmarkManualScan(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		rows, _ := db.Query("SELECT * FROM users")
 		var users []testUser
 		for rows.Next() {
 			var u testUser
-			rows.Scan(&u.ID, &u.Email, &u.Name)
+			_ = rows.Scan(&u.ID, &u.Email, &u.Name)
 			users = append(users, u)
 		}
+		_ = rows.Err()
 		rows.Close()
 		if len(users) != 100 {
 			b.Fatalf("expected 100, got %d", len(users))
@@ -107,7 +111,7 @@ func BenchmarkAutoScan(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		rows, _ := db.Query("SELECT * FROM users")
 		users, err := All[testUser](rows)
 		rows.Close()
@@ -128,15 +132,15 @@ func BenchmarkFieldCacheHit(b *testing.B) {
 
 	// Warm up cache
 	rows, _ := db.Query("SELECT * FROM users")
-	Row[testUser](rows)
+	_, _ = Row[testUser](rows)
 	rows.Close()
 
 	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		rows, _ := db.Query("SELECT * FROM users")
-		Row[testUser](rows)
+		_, _ = Row[testUser](rows)
 		rows.Close()
 	}
 }
@@ -146,7 +150,7 @@ func BenchmarkFieldCacheHit(b *testing.B) {
 func setupBenchDB(b *testing.B, rowCount int) *sql.DB {
 	b.Helper()
 
-	db, err := sql.Open("turso", ":memory:")
+	db, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
 		b.Fatalf("failed to open db: %v", err)
 	}
@@ -165,11 +169,11 @@ func setupBenchDB(b *testing.B, rowCount int) *sql.DB {
 	// Bulk insert
 	tx, _ := db.Begin()
 	stmt, _ := tx.Prepare("INSERT INTO users (id, email, name) VALUES (?, ?, ?)")
-	for i := 0; i < rowCount; i++ {
-		stmt.Exec(fmt.Sprintf("%d", i), fmt.Sprintf("user%d@test.com", i), fmt.Sprintf("User %d", i))
+	defer stmt.Close()
+	for i := range rowCount {
+		_, _ = stmt.Exec(strconv.Itoa(i), fmt.Sprintf("user%d@test.com", i), fmt.Sprintf("User %d", i))
 	}
-	stmt.Close()
-	tx.Commit()
+	_ = tx.Commit()
 
 	return db
 }

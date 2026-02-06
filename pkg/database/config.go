@@ -2,17 +2,22 @@ package database
 
 import "time"
 
+// DefaultDriver is the driver used when none is specified.
+const DefaultDriver = "sqlite"
+
 // Config holds database connection pool and pragma settings
 type Config struct {
+	Pragmas         map[string]string
+	Driver          string
+	ConnMaxLifetime time.Duration
 	MaxOpenConns    int
 	MaxIdleConns    int
-	ConnMaxLifetime time.Duration
-	Pragmas         map[string]string
 }
 
 // DefaultConfig returns a configuration suitable for general use
 func DefaultConfig() *Config {
 	return &Config{
+		Driver:          DefaultDriver,
 		MaxOpenConns:    25,
 		MaxIdleConns:    5,
 		ConnMaxLifetime: 5 * time.Minute,
@@ -28,6 +33,7 @@ func DefaultConfig() *Config {
 // DevelopmentConfig returns a configuration optimized for development
 func DevelopmentConfig() *Config {
 	return &Config{
+		Driver:          DefaultDriver,
 		MaxOpenConns:    10,
 		MaxIdleConns:    2,
 		ConnMaxLifetime: 1 * time.Minute,
@@ -43,6 +49,7 @@ func DevelopmentConfig() *Config {
 // ProductionConfig returns a configuration optimized for production
 func ProductionConfig() *Config {
 	return &Config{
+		Driver:          DefaultDriver,
 		MaxOpenConns:    100,
 		MaxIdleConns:    10,
 		ConnMaxLifetime: 15 * time.Minute,
@@ -54,6 +61,16 @@ func ProductionConfig() *Config {
 			"foreign_keys": "ON",
 		},
 	}
+}
+
+// WithDriver sets the database/sql driver name.
+// Panics if name is empty to catch configuration errors early.
+func (c *Config) WithDriver(name string) *Config {
+	if name == "" {
+		panic("database: driver name cannot be empty")
+	}
+	c.Driver = name
+	return c
 }
 
 // WithMaxOpenConns sets the maximum number of open connections

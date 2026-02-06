@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log"
 
-	_ "turso.tech/database/tursogo"
+	_ "github.com/fightbulc/go-turso-kit/pkg/driver/modernc"
 
 	"github.com/fightbulc/go-turso-kit/pkg/migrations"
 )
@@ -18,7 +18,7 @@ func main() {
 	ctx := context.Background()
 
 	// Open database connection
-	db, err := sql.Open("turso", ":memory:")
+	db, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
 		log.Fatalf("Failed to open database: %v", err)
 	}

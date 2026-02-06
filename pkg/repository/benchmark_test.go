@@ -3,14 +3,16 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"os"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/fightbulc/go-turso-kit/pkg/query"
-	_ "turso.tech/database/tursogo"
+	_ "modernc.org/sqlite"
 )
 
 // Benchmarks
@@ -23,12 +25,12 @@ func BenchmarkFindByID(b *testing.B) {
 	ctx := context.Background()
 
 	// Insert test data
-	db.Exec("INSERT INTO users (id, email, name) VALUES ('1', 'test@test.com', 'Test')")
+	_, _ = db.Exec("INSERT INTO users (id, email, name) VALUES ('1', 'test@test.com', 'Test')")
 
 	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, err := repo.FindByID(ctx, "1")
 		if err != nil {
 			b.Fatal(err)
@@ -49,6 +51,8 @@ func BenchmarkFindAll_10000(b *testing.B) {
 }
 
 func benchmarkFindAll(b *testing.B, count int) {
+	b.Helper()
+
 	db := setupBenchDB(b)
 	defer db.Close()
 
@@ -61,7 +65,7 @@ func benchmarkFindAll(b *testing.B, count int) {
 	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		users, err := repo.FindAll(ctx)
 		if err != nil {
 			b.Fatal(err)
@@ -82,7 +86,7 @@ func BenchmarkInsert(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for i := range b.N {
 		q, _ := query.Build(
 			"INSERT INTO users (id, email, name) VALUES (:id, :email, :name)",
 			map[string]any{
@@ -106,12 +110,12 @@ func BenchmarkUpdate(b *testing.B) {
 	ctx := context.Background()
 
 	// Insert test data
-	db.Exec("INSERT INTO users (id, email, name) VALUES ('1', 'test@test.com', 'Test')")
+	_, _ = db.Exec("INSERT INTO users (id, email, name) VALUES ('1', 'test@test.com', 'Test')")
 
 	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for i := range b.N {
 		q, _ := query.Build(
 			"UPDATE users SET name = :name WHERE id = :id",
 			map[string]any{"id": "1", "name": fmt.Sprintf("Name %d", i)},
@@ -133,7 +137,7 @@ func BenchmarkTransaction(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for i := range b.N {
 		err := repo.WithTx(ctx, func(tx *TxRepository[testUser, string]) error {
 			q, _ := query.Build(
 				"INSERT INTO users (id, email, name) VALUES (:id, :email, :name)",
@@ -164,14 +168,14 @@ func setupConcurrentDB(t *testing.T) *sql.DB {
 		os.Remove(tmpFile)
 	})
 
-	db, err := sql.Open("turso", tmpFile)
+	db, err := sql.Open("sqlite", tmpFile)
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}
 
 	// SQLite concurrency settings
-	db.Exec("PRAGMA journal_mode=WAL")
-	db.Exec("PRAGMA busy_timeout=5000")
+	_, _ = db.Exec("PRAGMA journal_mode=WAL")
+	_, _ = db.Exec("PRAGMA busy_timeout=5000")
 	db.SetMaxOpenConns(1) // SQLite works best with single writer
 
 	_, err = db.Exec(`
@@ -193,9 +197,9 @@ func TestConcurrentReads(t *testing.T) {
 	defer db.Close()
 
 	// Insert test data
-	for i := 0; i < 100; i++ {
-		db.Exec("INSERT INTO users (id, email, name) VALUES (?, ?, ?)",
-			fmt.Sprintf("%d", i), fmt.Sprintf("user%d@test.com", i), fmt.Sprintf("User %d", i))
+	for i := range 100 {
+		_, _ = db.Exec("INSERT INTO users (id, email, name) VALUES (?, ?, ?)",
+			strconv.Itoa(i), fmt.Sprintf("user%d@test.com", i), fmt.Sprintf("User %d", i))
 	}
 
 	repo := New[testUser, string](db, "users")
@@ -208,14 +212,14 @@ func TestConcurrentReads(t *testing.T) {
 	var errorCount int64
 	var mu sync.Mutex
 
-	for g := 0; g < goroutines; g++ {
+	for g := range goroutines {
 		wg.Add(1)
 		go func(id int) {
 			defer wg.Done()
-			for i := 0; i < iterations; i++ {
-				userID := fmt.Sprintf("%d", (id*iterations+i)%100)
+			for i := range iterations {
+				userID := strconv.Itoa((id*iterations + i) % 100)
 				_, err := repo.FindByID(ctx, userID)
-				if err != nil && err != ErrNotFound {
+				if err != nil && !errors.Is(err, ErrNotFound) {
 					mu.Lock()
 					errorCount++
 					mu.Unlock()
@@ -245,11 +249,11 @@ func TestConcurrentWrites(t *testing.T) {
 	var successCount, errorCount int64
 	var mu sync.Mutex
 
-	for g := 0; g < goroutines; g++ {
+	for g := range goroutines {
 		wg.Add(1)
 		go func(id int) {
 			defer wg.Done()
-			for i := 0; i < iterations; i++ {
+			for i := range iterations {
 				q, _ := query.Build(
 					"INSERT INTO users (id, email, name) VALUES (:id, :email, :name)",
 					map[string]any{
@@ -296,11 +300,11 @@ func TestConcurrentTransactions(t *testing.T) {
 	var successCount, errorCount int64
 	var mu sync.Mutex
 
-	for g := 0; g < goroutines; g++ {
+	for g := range goroutines {
 		wg.Add(1)
 		go func(id int) {
 			defer wg.Done()
-			for i := 0; i < iterations; i++ {
+			for i := range iterations {
 				err := repo.WithTx(ctx, func(tx *TxRepository[testUser, string]) error {
 					q, _ := query.Build(
 						"INSERT INTO users (id, email, name) VALUES (:id, :email, :name)",
@@ -355,11 +359,11 @@ func TestMemoryLargeResultSet(t *testing.T) {
 
 	tx, _ := db.Begin()
 	stmt, _ := tx.Prepare("INSERT INTO users (id, email, name) VALUES (?, ?, ?)")
-	for i := 0; i < rowCount; i++ {
-		stmt.Exec(fmt.Sprintf("%d", i), fmt.Sprintf("user%d@test.com", i), fmt.Sprintf("User %d", i))
+	defer stmt.Close()
+	for i := range rowCount {
+		_, _ = stmt.Exec(strconv.Itoa(i), fmt.Sprintf("user%d@test.com", i), fmt.Sprintf("User %d", i))
 	}
-	stmt.Close()
-	tx.Commit()
+	_ = tx.Commit()
 
 	t.Log("Fetching all rows...")
 
@@ -381,7 +385,7 @@ func TestMemoryLargeResultSet(t *testing.T) {
 func setupBenchDB(b *testing.B) *sql.DB {
 	b.Helper()
 
-	db, err := sql.Open("turso", ":memory:")
+	db, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
 		b.Fatalf("failed to open db: %v", err)
 	}
@@ -405,9 +409,9 @@ func insertBulkUsers(b *testing.B, db *sql.DB, count int) {
 
 	tx, _ := db.Begin()
 	stmt, _ := tx.Prepare("INSERT INTO users (id, email, name) VALUES (?, ?, ?)")
-	for i := 0; i < count; i++ {
-		stmt.Exec(fmt.Sprintf("%d", i), fmt.Sprintf("user%d@test.com", i), fmt.Sprintf("User %d", i))
+	defer stmt.Close()
+	for i := range count {
+		_, _ = stmt.Exec(strconv.Itoa(i), fmt.Sprintf("user%d@test.com", i), fmt.Sprintf("User %d", i))
 	}
-	stmt.Close()
-	tx.Commit()
+	_ = tx.Commit()
 }

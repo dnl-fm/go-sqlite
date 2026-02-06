@@ -3,10 +3,9 @@ package database
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"sync"
-
-	_ "turso.tech/database/tursogo"
 )
 
 // Database wraps sql.DB and provides context-aware operations
@@ -20,6 +19,18 @@ type Database struct {
 
 // Option is a functional option for configuring the Database
 type Option func(*Database) error
+
+// WithDriver sets the database/sql driver name as a functional option.
+// This is a convenience shortcut for WithConfig(cfg.WithDriver(name)).
+func WithDriver(name string) Option {
+	return func(d *Database) error {
+		if name == "" {
+			return errors.New("driver name cannot be empty")
+		}
+		d.config.Driver = name
+		return nil
+	}
+}
 
 // WithConfig sets a custom configuration
 func WithConfig(cfg *Config) Option {
@@ -46,13 +57,14 @@ func Open(ctx context.Context, path string, opts ...Option) (*Database, error) {
 
 	// Apply options
 	for _, opt := range opts {
-		if err := opt(db); err != nil {
+		err := opt(db)
+		if err != nil {
 			return nil, err
 		}
 	}
 
-	// Open database connection
-	sqlDB, err := sql.Open("turso", path)
+	// Open database connection using configured driver
+	sqlDB, err := sql.Open(db.config.Driver, path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
@@ -65,13 +77,11 @@ func Open(ctx context.Context, path string, opts ...Option) (*Database, error) {
 	db.db.SetConnMaxLifetime(db.config.ConnMaxLifetime)
 
 	// Apply pragmas
-	if err := db.applyPragmas(ctx); err != nil {
-		sqlDB.Close()
-		return nil, fmt.Errorf("failed to apply pragmas: %w", err)
-	}
+	db.applyPragmas(ctx)
 
 	// Verify connection
-	if err := db.db.PingContext(ctx); err != nil {
+	err = db.db.PingContext(ctx)
+	if err != nil {
 		sqlDB.Close()
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
@@ -80,17 +90,16 @@ func Open(ctx context.Context, path string, opts ...Option) (*Database, error) {
 }
 
 // applyPragmas applies configured pragma settings
-func (d *Database) applyPragmas(ctx context.Context) error {
+func (d *Database) applyPragmas(ctx context.Context) {
 	for key, value := range d.config.Pragmas {
-		// Use parameterized query to properly handle values
 		query := fmt.Sprintf("PRAGMA %s = %s", key, value)
-		if _, err := d.db.ExecContext(ctx, query); err != nil {
+		_, err := d.db.ExecContext(ctx, query)
+		if err != nil {
 			// Ignore pragma errors for compatibility (some pragmas may not be supported)
 			// This is especially true for in-memory databases or different SQLite versions
 			continue
 		}
 	}
-	return nil
 }
 
 // Query executes a query that returns rows
@@ -102,7 +111,7 @@ func (d *Database) Query(ctx context.Context, query string, args ...any) (*sql.R
 		return nil, ErrClosed
 	}
 
-	rows, err := d.db.QueryContext(ctx, query, args...)
+	rows, err := d.db.QueryContext(ctx, query, args...) //nolint:sqlclosecheck // caller is responsible for closing rows
 	if err != nil {
 		return nil, &QueryError{Query: query, Err: err}
 	}

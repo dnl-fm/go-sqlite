@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/fightbulc/go-turso-kit/pkg/query"
-	_ "turso.tech/database/tursogo"
+	_ "modernc.org/sqlite"
 )
 
 func TestWithTx_Commit(t *testing.T) {
@@ -76,7 +76,7 @@ func TestWithTx_Rollback(t *testing.T) {
 
 	// Verify data was NOT committed (rolled back)
 	_, err = repo.FindByID(ctx, "1")
-	if err != ErrNotFound {
+	if !errors.Is(err, ErrNotFound) {
 		t.Errorf("expected ErrNotFound (rollback), got %v", err)
 	}
 }
@@ -89,7 +89,7 @@ func TestWithTx_NilDB(t *testing.T) {
 		return nil
 	})
 
-	if err != ErrNilDB {
+	if !errors.Is(err, ErrNilDB) {
 		t.Errorf("expected ErrNilDB, got %v", err)
 	}
 }
@@ -127,7 +127,7 @@ func TestTxRepository_FindByID_NotFound(t *testing.T) {
 
 	err := repo.WithTx(ctx, func(tx *TxRepository[testUser, string]) error {
 		_, err := tx.FindByID(ctx, "nonexistent")
-		if err != ErrNotFound {
+		if !errors.Is(err, ErrNotFound) {
 			t.Errorf("expected ErrNotFound, got %v", err)
 		}
 		return nil
@@ -477,7 +477,7 @@ func TestTxRepository_Delete(t *testing.T) {
 
 		// Verify within transaction
 		_, err = tx.FindByID(ctx, "1")
-		if err != ErrNotFound {
+		if !errors.Is(err, ErrNotFound) {
 			t.Errorf("expected ErrNotFound, got %v", err)
 		}
 		return nil
@@ -523,7 +523,7 @@ func TestTxRepository_DeleteByID(t *testing.T) {
 
 		// Verify within transaction
 		_, err = tx.FindByID(ctx, "1")
-		if err != ErrNotFound {
+		if !errors.Is(err, ErrNotFound) {
 			t.Errorf("expected ErrNotFound, got %v", err)
 		}
 		return nil
@@ -542,7 +542,7 @@ func TestTxRepository_DeleteByID_NotFound(t *testing.T) {
 
 	err := repo.WithTx(ctx, func(tx *TxRepository[testUser, string]) error {
 		err := tx.DeleteByID(ctx, "nonexistent")
-		if err != ErrNotFound {
+		if !errors.Is(err, ErrNotFound) {
 			t.Errorf("expected ErrNotFound, got %v", err)
 		}
 		return nil

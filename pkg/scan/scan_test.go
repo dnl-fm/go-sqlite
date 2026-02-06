@@ -2,9 +2,10 @@ package scan
 
 import (
 	"database/sql"
+	"errors"
 	"testing"
 
-	_ "turso.tech/database/tursogo"
+	_ "modernc.org/sqlite"
 )
 
 type testUser struct {
@@ -22,7 +23,7 @@ type testPartial struct {
 func setupTestDB(t *testing.T) *sql.DB {
 	t.Helper()
 
-	db, err := sql.Open("turso", ":memory:")
+	db, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}
@@ -88,7 +89,7 @@ func TestRow_NoRows(t *testing.T) {
 	defer rows.Close()
 
 	_, err = Row[testUser](rows)
-	if err != sql.ErrNoRows {
+	if !errors.Is(err, sql.ErrNoRows) {
 		t.Errorf("expected sql.ErrNoRows, got %v", err)
 	}
 }

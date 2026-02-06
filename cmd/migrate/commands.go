@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,14 +12,14 @@ import (
 	"time"
 
 	"github.com/fightbulc/go-turso-kit/pkg/migrations"
-	_ "turso.tech/database/tursogo"
+	_ "github.com/fightbulc/go-turso-kit/pkg/driver/modernc"
 )
 
 // getDatabaseURL returns the database URL from environment
 func getDatabaseURL() (string, error) {
 	url := os.Getenv("DATABASE_URL")
 	if url == "" {
-		return "", fmt.Errorf("DATABASE_URL environment variable not set")
+		return "", errors.New("DATABASE_URL environment variable not set")
 	}
 	return url, nil
 }
@@ -30,7 +31,7 @@ func openDB() (*sql.DB, error) {
 		return nil, err
 	}
 
-	db, err := sql.Open("turso", url)
+	db, err := sql.Open("sqlite", url)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
@@ -39,9 +40,10 @@ func openDB() (*sql.DB, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	if err := db.PingContext(ctx); err != nil {
+	pingErr := db.PingContext(ctx)
+	if pingErr != nil {
 		db.Close()
-		return nil, fmt.Errorf("failed to ping database: %w", err)
+		return nil, fmt.Errorf("failed to ping database: %w", pingErr)
 	}
 
 	return db, nil
@@ -59,8 +61,9 @@ func runUp() error {
 
 	fmt.Println("Running migrations...")
 
-	if err := migrations.Run(ctx, db); err != nil {
-		return fmt.Errorf("migration failed: %w", err)
+	runErr := migrations.Run(ctx, db)
+	if runErr != nil {
+		return fmt.Errorf("migration failed: %w", runErr)
 	}
 
 	// Show final status
@@ -97,8 +100,9 @@ func runDown(version string) error {
 		fmt.Printf("Rolling back to version %s...\n", version)
 	}
 
-	if err := migrations.Rollback(ctx, db, version); err != nil {
-		return fmt.Errorf("rollback failed: %w", err)
+	rbErr := migrations.Rollback(ctx, db, version)
+	if rbErr != nil {
+		return fmt.Errorf("rollback failed: %w", rbErr)
 	}
 
 	fmt.Println("✓ Successfully rolled back migration")
@@ -180,7 +184,7 @@ func getModuleName() (string, error) {
 		}
 	}
 
-	return "", fmt.Errorf("module declaration not found in go.mod")
+	return "", errors.New("module declaration not found in go.mod")
 }
 
 // runCreate generates a new migration file
@@ -199,12 +203,14 @@ func runCreate(name string) error {
 	filePath := filepath.Join("migrations", fileName)
 
 	// Check if migrations directory exists
-	if _, err := os.Stat("migrations"); os.IsNotExist(err) {
-		return fmt.Errorf("migrations directory not found. Create it first: mkdir migrations")
+	info, statErr := os.Stat("migrations")
+	if statErr != nil || !info.IsDir() {
+		return errors.New("migrations directory not found. Create it first: mkdir migrations")
 	}
 
 	// Check if file already exists
-	if _, err := os.Stat(filePath); err == nil {
+	_, statErr = os.Stat(filePath)
+	if statErr == nil {
 		return fmt.Errorf("migration file already exists: %s", filePath)
 	}
 
@@ -230,8 +236,9 @@ func runCreate(name string) error {
 		ModuleName:  moduleName,
 	}
 
-	if err := tmpl.Execute(file, data); err != nil {
-		return fmt.Errorf("failed to write template: %w", err)
+	execErr := tmpl.Execute(file, data)
+	if execErr != nil {
+		return fmt.Errorf("failed to write template: %w", execErr)
 	}
 
 	fmt.Printf("Created migration: %s\n", filePath)

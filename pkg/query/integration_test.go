@@ -5,11 +5,11 @@ import (
 	"database/sql"
 	"testing"
 
-	_ "turso.tech/database/tursogo"
+	_ "modernc.org/sqlite"
 )
 
 func TestIntegration_Insert(t *testing.T) {
-	db, err := sql.Open("turso", ":memory:")
+	db, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
@@ -48,7 +48,7 @@ func TestIntegration_Insert(t *testing.T) {
 }
 
 func TestIntegration_Select(t *testing.T) {
-	db, err := sql.Open("turso", ":memory:")
+	db, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
@@ -96,7 +96,7 @@ func TestIntegration_Select(t *testing.T) {
 }
 
 func TestIntegration_Update(t *testing.T) {
-	db, err := sql.Open("turso", ":memory:")
+	db, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
@@ -141,14 +141,14 @@ func TestIntegration_Update(t *testing.T) {
 
 	// Verify update
 	var email string
-	db.QueryRowContext(ctx, "SELECT email FROM users WHERE name = 'Alice'").Scan(&email)
+	_ = db.QueryRowContext(ctx, "SELECT email FROM users WHERE name = 'Alice'").Scan(&email)
 	if email != "alice.new@example.com" {
 		t.Errorf("expected updated email, got %q", email)
 	}
 }
 
 func TestIntegration_Delete(t *testing.T) {
-	db, err := sql.Open("turso", ":memory:")
+	db, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
@@ -192,14 +192,14 @@ func TestIntegration_Delete(t *testing.T) {
 
 	// Verify delete
 	var count int
-	db.QueryRowContext(ctx, "SELECT COUNT(*) FROM users").Scan(&count)
+	_ = db.QueryRowContext(ctx, "SELECT COUNT(*) FROM users").Scan(&count)
 	if count != 1 {
 		t.Errorf("expected 1 remaining row, got %d", count)
 	}
 }
 
 func TestIntegration_DuplicatePlaceholders(t *testing.T) {
-	db, err := sql.Open("turso", ":memory:")
+	db, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
@@ -244,13 +244,18 @@ func TestIntegration_DuplicatePlaceholders(t *testing.T) {
 		count++
 	}
 
+	err = rows.Err()
+	if err != nil {
+		t.Fatalf("rows error: %v", err)
+	}
+
 	if count != 2 {
 		t.Errorf("expected 2 rows, got %d", count)
 	}
 }
 
 func TestIntegration_New(t *testing.T) {
-	db, err := sql.Open("turso", ":memory:")
+	db, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
@@ -290,13 +295,18 @@ func TestIntegration_New(t *testing.T) {
 		count++
 	}
 
+	err = rows.Err()
+	if err != nil {
+		t.Fatalf("rows error: %v", err)
+	}
+
 	if count != 2 {
 		t.Errorf("expected 2 rows, got %d", count)
 	}
 }
 
 func BenchmarkBuild(b *testing.B) {
-	db, err := sql.Open("turso", ":memory:")
+	db, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
 		b.Fatalf("failed to open database: %v", err)
 	}
@@ -304,14 +314,14 @@ func BenchmarkBuild(b *testing.B) {
 
 	ctx := context.Background()
 
-	db.ExecContext(ctx, `CREATE TABLE bench (id INTEGER PRIMARY KEY, name TEXT, value INTEGER)`)
+	_, _ = db.ExecContext(ctx, `CREATE TABLE bench (id INTEGER PRIMARY KEY, name TEXT, value INTEGER)`)
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for i := range b.N {
 		q, _ := Build(
 			"INSERT INTO bench (name, value) VALUES (:name, :value)",
 			map[string]any{"name": "test", "value": i},
 		)
-		db.ExecContext(ctx, q.SQL(), q.Args()...)
+		_, _ = db.ExecContext(ctx, q.SQL(), q.Args()...)
 	}
 }

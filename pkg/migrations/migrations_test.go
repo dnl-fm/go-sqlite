@@ -6,14 +6,14 @@ import (
 	"testing"
 	"time"
 
-	_ "turso.tech/database/tursogo"
+	_ "modernc.org/sqlite"
 )
 
 // setupTestDB creates an in-memory database for testing
 func setupTestDB(t *testing.T) *sql.DB {
 	t.Helper()
 
-	db, err := sql.Open("turso", ":memory:")
+	db, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
 		t.Fatalf("failed to open test database: %v", err)
 	}
@@ -28,10 +28,10 @@ func TestRegister(t *testing.T) {
 	defer Reset()
 
 	tests := []struct {
-		name        string
 		migration   Migration
-		expectPanic bool
+		name        string
 		panicMsg    string
+		expectPanic bool
 	}{
 		{
 			name: "valid migration",
@@ -396,10 +396,10 @@ func TestLatest(t *testing.T) {
 		Version:     "20251107000001",
 		Description: "create_users",
 		Up: func(ctx context.Context, db *sql.DB) error {
-			_, err := db.ExecContext(ctx, `
+			_, execErr := db.ExecContext(ctx, `
 				CREATE TABLE users (id TEXT PRIMARY KEY)
 			`)
-			return err
+			return execErr
 		},
 		Down: func(ctx context.Context, db *sql.DB) error {
 			return nil
@@ -410,10 +410,10 @@ func TestLatest(t *testing.T) {
 		Version:     "20251107000002",
 		Description: "create_posts",
 		Up: func(ctx context.Context, db *sql.DB) error {
-			_, err := db.ExecContext(ctx, `
+			_, execErr := db.ExecContext(ctx, `
 				CREATE TABLE posts (id TEXT PRIMARY KEY)
 			`)
-			return err
+			return execErr
 		},
 		Down: func(ctx context.Context, db *sql.DB) error {
 			return nil
