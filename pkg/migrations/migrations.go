@@ -14,17 +14,17 @@ type MigrationFunc func(context.Context, *sql.DB) error
 
 // Migration represents a database migration
 type Migration struct {
-	Version     string
-	Description string
 	Up          MigrationFunc
 	Down        MigrationFunc
+	Version     string
+	Description string
 }
 
 // MigrationStatus represents the status of a migration
 type MigrationStatus struct {
+	ExecutedAt  *time.Time
 	Version     string
 	Description string
-	ExecutedAt  *time.Time
 	DurationMs  int64
 }
 
@@ -94,7 +94,8 @@ func ensureMigrationsTable(ctx context.Context, db *sql.DB) error {
 
 // getExecutedMigrations returns all executed migrations from the database
 func getExecutedMigrations(ctx context.Context, db *sql.DB) (map[string]MigrationStatus, error) {
-	if err := ensureMigrationsTable(ctx, db); err != nil {
+	err := ensureMigrationsTable(ctx, db)
+	if err != nil {
 		return nil, err
 	}
 
@@ -113,26 +114,27 @@ func getExecutedMigrations(ctx context.Context, db *sql.DB) (map[string]Migratio
 		var status MigrationStatus
 		var executedAt string
 
-		err := rows.Scan(&status.Version, &status.Description, &executedAt, &status.DurationMs)
+		err = rows.Scan(&status.Version, &status.Description, &executedAt, &status.DurationMs)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan migration row: %w", err)
 		}
 
 		// Parse the timestamp
-		t, err := time.Parse("2006-01-02 15:04:05", executedAt)
-		if err != nil {
+		parsedTime, parseErr := time.Parse("2006-01-02 15:04:05", executedAt)
+		if parseErr != nil {
 			// Try with timezone
-			t, err = time.Parse(time.RFC3339, executedAt)
-			if err != nil {
-				return nil, fmt.Errorf("failed to parse executed_at: %w", err)
+			parsedTime, parseErr = time.Parse(time.RFC3339, executedAt)
+			if parseErr != nil {
+				return nil, fmt.Errorf("failed to parse executed_at: %w", parseErr)
 			}
 		}
-		status.ExecutedAt = &t
+		status.ExecutedAt = &parsedTime
 
 		executed[status.Version] = status
 	}
 
-	if err := rows.Err(); err != nil {
+	err = rows.Err()
+	if err != nil {
 		return nil, fmt.Errorf("error iterating migration rows: %w", err)
 	}
 

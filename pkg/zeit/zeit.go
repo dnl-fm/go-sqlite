@@ -144,8 +144,9 @@ func (z *Zeit) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON implements json.Unmarshaler.
 func (z *Zeit) UnmarshalJSON(data []byte) error {
 	var isoString string
-	if err := json.Unmarshal(data, &isoString); err != nil {
-		return err
+	unmarshalErr := json.Unmarshal(data, &isoString)
+	if unmarshalErr != nil {
+		return unmarshalErr
 	}
 
 	parsed, err := FromUser(isoString, time.UTC)

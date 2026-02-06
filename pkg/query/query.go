@@ -25,10 +25,10 @@ var paramPattern = regexp.MustCompile(`:([a-zA-Z_][a-zA-Z0-9_]*)`)
 // Parameters use :name syntax in the original SQL and are converted
 // to ? placeholders for safe execution.
 type Query struct {
+	params   map[string]any // Original named parameters
 	original string         // Original SQL with :name placeholders
 	sql      string         // Converted SQL with ? placeholders
 	args     []any          // Ordered arguments matching ? positions
-	params   map[string]any // Original named parameters
 }
 
 // Build creates a Query with named parameters.

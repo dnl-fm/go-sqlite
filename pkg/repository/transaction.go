@@ -45,14 +45,16 @@ func (r *Repository[T, ID]) WithTx(ctx context.Context, fn func(*TxRepository[T,
 
 	err = fn(txRepo)
 	if err != nil {
-		if rbErr := tx.Rollback(); rbErr != nil {
-			return fmt.Errorf("rollback failed: %w (original error: %v)", rbErr, err)
+		rbErr := tx.Rollback()
+		if rbErr != nil {
+			return fmt.Errorf("rollback failed: %w (original error: %w)", rbErr, err)
 		}
 		return err
 	}
 
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
+	commitErr := tx.Commit()
+	if commitErr != nil {
+		return fmt.Errorf("failed to commit transaction: %w", commitErr)
 	}
 
 	return nil
@@ -94,7 +96,7 @@ func (r *TxRepository[T, ID]) FindByID(ctx context.Context, id ID) (T, error) {
 
 // FindAll retrieves all entities from the table within the transaction.
 func (r *TxRepository[T, ID]) FindAll(ctx context.Context) ([]T, error) {
-	q, err := query.New(fmt.Sprintf("SELECT * FROM %s", r.tableName))
+	q, err := query.New("SELECT * FROM " + r.tableName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build query: %w", err)
 	}
@@ -140,7 +142,7 @@ func (r *TxRepository[T, ID]) FindOneByQuery(ctx context.Context, q *query.Query
 
 // Count returns the total number of entities in the table within the transaction.
 func (r *TxRepository[T, ID]) Count(ctx context.Context) (int64, error) {
-	sqlStr := fmt.Sprintf("SELECT COUNT(*) FROM %s", r.tableName)
+	sqlStr := "SELECT COUNT(*) FROM " + r.tableName
 	var count int64
 	err := r.tx.QueryRowContext(ctx, sqlStr).Scan(&count)
 	if err != nil {

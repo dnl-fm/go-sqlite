@@ -100,7 +100,7 @@ func (r *Repository[T, ID]) FindAll(ctx context.Context) ([]T, error) {
 		return nil, ErrNilDB
 	}
 
-	q, err := query.New(fmt.Sprintf("SELECT * FROM %s", r.tableName))
+	q, err := query.New("SELECT * FROM " + r.tableName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build query: %w", err)
 	}
@@ -157,7 +157,7 @@ func (r *Repository[T, ID]) Count(ctx context.Context) (int64, error) {
 		return 0, ErrNilDB
 	}
 
-	sqlStr := fmt.Sprintf("SELECT COUNT(*) FROM %s", r.tableName)
+	sqlStr := "SELECT COUNT(*) FROM " + r.tableName
 	var count int64
 	err := r.db.QueryRowContext(ctx, sqlStr).Scan(&count)
 	if err != nil {

@@ -18,8 +18,8 @@ var (
 
 // fieldInfo caches struct field information
 type fieldInfo struct {
-	index int
 	name  string
+	index int
 }
 
 // structCache caches struct field mappings to avoid repeated reflection
@@ -31,13 +31,15 @@ func Row[T any](rows *sql.Rows) (T, error) {
 	var result T
 
 	if !rows.Next() {
-		if err := rows.Err(); err != nil {
+		err := rows.Err()
+		if err != nil {
 			return result, err
 		}
 		return result, sql.ErrNoRows
 	}
 
-	if err := scanStruct(rows, &result); err != nil {
+	err := scanStruct(rows, &result)
+	if err != nil {
 		return result, err
 	}
 
@@ -51,13 +53,15 @@ func All[T any](rows *sql.Rows) ([]T, error) {
 
 	for rows.Next() {
 		var item T
-		if err := scanStruct(rows, &item); err != nil {
+		err := scanStruct(rows, &item)
+		if err != nil {
 			return nil, err
 		}
 		results = append(results, item)
 	}
 
-	if err := rows.Err(); err != nil {
+	err := rows.Err()
+	if err != nil {
 		return nil, err
 	}
 
@@ -68,14 +72,16 @@ func All[T any](rows *sql.Rows) ([]T, error) {
 // Unlike Row, does not return error for no rows.
 func One[T any](rows *sql.Rows) (*T, error) {
 	if !rows.Next() {
-		if err := rows.Err(); err != nil {
+		err := rows.Err()
+		if err != nil {
 			return nil, err
 		}
 		return nil, nil
 	}
 
 	var result T
-	if err := scanStruct(rows, &result); err != nil {
+	err := scanStruct(rows, &result)
+	if err != nil {
 		return nil, err
 	}
 
@@ -119,7 +125,9 @@ func scanStruct(rows *sql.Rows, dest any) error {
 // getFieldMap returns cached field mapping for a struct type
 func getFieldMap(t reflect.Type) map[string]fieldInfo {
 	if cached, ok := structCache.Load(t); ok {
-		return cached.(map[string]fieldInfo)
+		if fm, assertOk := cached.(map[string]fieldInfo); assertOk {
+			return fm
+		}
 	}
 
 	fieldMap := buildFieldMap(t)
@@ -131,7 +139,7 @@ func getFieldMap(t reflect.Type) map[string]fieldInfo {
 func buildFieldMap(t reflect.Type) map[string]fieldInfo {
 	fieldMap := make(map[string]fieldInfo)
 
-	for i := 0; i < t.NumField(); i++ {
+	for i := range t.NumField() {
 		field := t.Field(i)
 
 		// Skip unexported fields

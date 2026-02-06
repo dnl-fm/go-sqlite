@@ -12,41 +12,34 @@ func main() {
 	}
 
 	command := os.Args[1]
+	var err error
 
 	switch command {
 	case "up":
-		if err := runUp(); err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			os.Exit(1)
-		}
+		err = runUp()
 	case "down":
 		version := ""
 		if len(os.Args) > 2 {
 			version = os.Args[2]
 		}
-		if err := runDown(version); err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			os.Exit(1)
-		}
+		err = runDown(version)
 	case "status":
-		if err := runStatus(); err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			os.Exit(1)
-		}
+		err = runStatus()
 	case "create":
 		if len(os.Args) < 3 {
 			fmt.Fprintf(os.Stderr, "Error: migration name required\n")
 			printUsage()
 			os.Exit(1)
 		}
-		name := os.Args[2]
-		if err := runCreate(name); err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			os.Exit(1)
-		}
+		err = runCreate(os.Args[2])
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown command: %s\n", command)
 		printUsage()
+		os.Exit(1)
+	}
+
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
 }

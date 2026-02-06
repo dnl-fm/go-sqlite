@@ -27,7 +27,7 @@ func TestNew(t *testing.T) {
 		seen := make(map[string]bool)
 		iterations := 10000
 
-		for i := 0; i < iterations; i++ {
+		for range iterations {
 			n := New()
 			s := n.String()
 			if seen[s] {
@@ -98,7 +98,7 @@ func TestUniquenessAcrossLengths(t *testing.T) {
 		t.Run("length="+string(rune(length+'0')), func(t *testing.T) {
 			seen := make(map[string]bool)
 
-			for i := 0; i < iterations; i++ {
+			for range iterations {
 				n := NewWithLength(length)
 				s := n.String()
 				if seen[s] {
@@ -256,8 +256,9 @@ func TestJSONMarshaling(t *testing.T) {
 		}
 
 		var unmarshaled NanoID
-		if err := json.Unmarshal(data, &unmarshaled); err != nil {
-			t.Fatalf("unmarshal error: %v", err)
+		unmarshalErr := json.Unmarshal(data, &unmarshaled)
+		if unmarshalErr != nil {
+			t.Fatalf("unmarshal error: %v", unmarshalErr)
 		}
 
 		if unmarshaled.String() != original.String() {
@@ -275,8 +276,9 @@ func TestJSONMarshaling(t *testing.T) {
 		}
 
 		var unmarshaled NanoID
-		if err := json.Unmarshal(data, &unmarshaled); err != nil {
-			t.Fatalf("unmarshal error: %v", err)
+		unmarshalErr := json.Unmarshal(data, &unmarshaled)
+		if unmarshalErr != nil {
+			t.Fatalf("unmarshal error: %v", unmarshalErr)
 		}
 
 		if len(unmarshaled.String()) != 32 {
@@ -330,7 +332,7 @@ func TestInvalidFormatRejection(t *testing.T) {
 // Benchmarks
 
 func BenchmarkNew(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_ = New()
 	}
 }
@@ -340,7 +342,7 @@ func BenchmarkNewWithLength(b *testing.B) {
 
 	for _, length := range lengths {
 		b.Run("length="+string(rune(length+'0')), func(b *testing.B) {
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				_ = NewWithLength(length)
 			}
 		})
@@ -351,7 +353,7 @@ func BenchmarkParse(b *testing.B) {
 	nanoid := New().String()
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, _ = Parse(nanoid)
 	}
 }
@@ -360,7 +362,7 @@ func BenchmarkString(b *testing.B) {
 	n := New()
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_ = n.String()
 	}
 }
@@ -369,7 +371,7 @@ func BenchmarkBytes(b *testing.B) {
 	n := New()
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_ = n.Bytes()
 	}
 }
@@ -378,17 +380,23 @@ func BenchmarkJSONMarshal(b *testing.B) {
 	n := New()
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_, _ = json.Marshal(n)
+	for range b.N {
+		_, err := json.Marshal(n)
+		if err != nil {
+			b.Fatal(err)
+		}
 	}
 }
 
 func BenchmarkJSONUnmarshal(b *testing.B) {
 	n := New()
-	data, _ := json.Marshal(n)
+	data, err := json.Marshal(n)
+	if err != nil {
+		b.Fatal(err)
+	}
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		var result NanoID
 		_ = json.Unmarshal(data, &result)
 	}

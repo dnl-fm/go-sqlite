@@ -6,10 +6,15 @@ import "time"
 type BillingInterval int
 
 const (
+	// Daily billing interval.
 	Daily BillingInterval = iota
+	// Weekly billing interval.
 	Weekly
+	// Monthly billing interval.
 	Monthly
+	// Quarterly billing interval.
 	Quarterly
+	// Yearly billing interval.
 	Yearly
 )
 
@@ -30,7 +35,7 @@ func (z *Zeit) Cycles(count int, interval BillingInterval) []*Period {
 	periods := make([]*Period, count)
 	current := z
 
-	for i := 0; i < count; i++ {
+	for i := range count {
 		var next *Zeit
 
 		switch interval {

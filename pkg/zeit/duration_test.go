@@ -24,9 +24,9 @@ func TestNewDuration(t *testing.T) {
 
 func TestDuration_Days(t *testing.T) {
 	tests := []struct {
-		name     string
 		start    time.Time
 		end      time.Time
+		name     string
 		expected int
 	}{
 		{
@@ -72,9 +72,9 @@ func TestDuration_Days(t *testing.T) {
 
 func TestDuration_BusinessDays(t *testing.T) {
 	tests := []struct {
-		name     string
 		start    time.Time
 		end      time.Time
+		name     string
 		expected int
 	}{
 		{

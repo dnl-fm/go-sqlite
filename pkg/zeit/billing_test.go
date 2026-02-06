@@ -214,8 +214,8 @@ func TestPeriod_Contains(t *testing.T) {
 	}
 
 	tests := []struct {
-		name     string
 		zeit     *Zeit
+		name     string
 		expected bool
 	}{
 		{

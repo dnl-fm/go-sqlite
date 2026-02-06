@@ -3,6 +3,7 @@ package migrations
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"sort"
 	"time"
@@ -12,7 +13,8 @@ import (
 // Migrations are run in a transaction and rolled back on error
 func Run(ctx context.Context, db *sql.DB) error {
 	// Ensure migrations table exists
-	if err := ensureMigrationsTable(ctx, db); err != nil {
+	err := ensureMigrationsTable(ctx, db)
+	if err != nil {
 		return err
 	}
 
@@ -39,8 +41,9 @@ func Run(ctx context.Context, db *sql.DB) error {
 
 	// Execute pending migrations
 	for _, m := range pending {
-		if err := runMigration(ctx, db, m); err != nil {
-			return fmt.Errorf("migration %s failed: %w", m.Version, err)
+		runErr := runMigration(ctx, db, m)
+		if runErr != nil {
+			return fmt.Errorf("migration %s failed: %w", m.Version, runErr)
 		}
 	}
 
@@ -66,17 +69,19 @@ func runMigration(ctx context.Context, db *sql.DB, m Migration) error {
 
 	defer func() {
 		if err != nil {
-			tx.Rollback()
+			tx.Rollback() //nolint:errcheck // best-effort rollback after error
 		}
 	}()
 
 	durationMs := duration.Milliseconds()
-	if err = recordMigration(ctx, tx, m.Version, m.Description, durationMs); err != nil {
+	err = recordMigration(ctx, tx, m.Version, m.Description, durationMs)
+	if err != nil {
 		return err
 	}
 
 	// Commit transaction
-	if err = tx.Commit(); err != nil {
+	err = tx.Commit()
+	if err != nil {
 		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
@@ -87,7 +92,8 @@ func runMigration(ctx context.Context, db *sql.DB, m Migration) error {
 // If version is empty, rolls back the last migration
 func Rollback(ctx context.Context, db *sql.DB, version string) error {
 	// Ensure migrations table exists
-	if err := ensureMigrationsTable(ctx, db); err != nil {
+	err := ensureMigrationsTable(ctx, db)
+	if err != nil {
 		return err
 	}
 
@@ -98,40 +104,13 @@ func Rollback(ctx context.Context, db *sql.DB, version string) error {
 	}
 
 	if len(executed) == 0 {
-		return fmt.Errorf("no migrations to rollback")
+		return errors.New("no migrations to rollback")
 	}
 
-	// Build sorted list of executed versions
-	versions := make([]string, 0, len(executed))
-	for v := range executed {
-		versions = append(versions, v)
-	}
-	sort.Strings(versions)
-
-	// Determine target version
-	var targetVersion string
-	if version == "" {
-		// Rollback last migration
-		if len(versions) == 0 {
-			return fmt.Errorf("no migrations to rollback")
-		}
-		targetVersion = versions[len(versions)-1]
-	} else {
-		// Validate target version exists
-		if _, exists := executed[version]; !exists {
-			return fmt.Errorf("migration version %s not found in executed migrations", version)
-		}
-		targetVersion = version
-	}
-
-	// Find migrations to rollback (all versions >= target, in reverse order)
-	var toRollback []string
-	for i := len(versions) - 1; i >= 0; i-- {
-		v := versions[i]
-		toRollback = append(toRollback, v)
-		if v == targetVersion {
-			break
-		}
+	// Determine which versions to rollback
+	toRollback, err := resolveRollbackTargets(executed, version)
+	if err != nil {
+		return err
 	}
 
 	// Get registered migrations for Down functions
@@ -149,12 +128,46 @@ func Rollback(ctx context.Context, db *sql.DB, version string) error {
 			return fmt.Errorf("migration %s has no Down function", v)
 		}
 
-		if err := rollbackMigration(ctx, db, m); err != nil {
-			return fmt.Errorf("rollback of %s failed: %w", v, err)
+		rbErr := rollbackMigration(ctx, db, m)
+		if rbErr != nil {
+			return fmt.Errorf("rollback of %s failed: %w", v, rbErr)
 		}
 	}
 
 	return nil
+}
+
+// resolveRollbackTargets determines which versions need to be rolled back.
+func resolveRollbackTargets(executed map[string]MigrationStatus, version string) ([]string, error) {
+	// Build sorted list of executed versions
+	versions := make([]string, 0, len(executed))
+	for v := range executed {
+		versions = append(versions, v)
+	}
+	sort.Strings(versions)
+
+	// Determine target version
+	var targetVersion string
+	if version == "" {
+		targetVersion = versions[len(versions)-1]
+	} else {
+		if _, exists := executed[version]; !exists {
+			return nil, fmt.Errorf("migration version %s not found in executed migrations", version)
+		}
+		targetVersion = version
+	}
+
+	// Collect versions >= target in reverse order
+	var toRollback []string
+	for i := len(versions) - 1; i >= 0; i-- {
+		v := versions[i]
+		toRollback = append(toRollback, v)
+		if v == targetVersion {
+			break
+		}
+	}
+
+	return toRollback, nil
 }
 
 // rollbackMigration rolls back a single migration
@@ -174,16 +187,18 @@ func rollbackMigration(ctx context.Context, db *sql.DB, m Migration) error {
 
 	defer func() {
 		if err != nil {
-			tx.Rollback()
+			tx.Rollback() //nolint:errcheck // best-effort rollback after error
 		}
 	}()
 
-	if err = removeMigration(ctx, tx, m.Version); err != nil {
+	err = removeMigration(ctx, tx, m.Version)
+	if err != nil {
 		return err
 	}
 
 	// Commit transaction
-	if err = tx.Commit(); err != nil {
+	err = tx.Commit()
+	if err != nil {
 		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
@@ -193,7 +208,8 @@ func rollbackMigration(ctx context.Context, db *sql.DB, m Migration) error {
 // Status returns the status of all migrations
 func Status(ctx context.Context, db *sql.DB) ([]MigrationStatus, error) {
 	// Ensure migrations table exists
-	if err := ensureMigrationsTable(ctx, db); err != nil {
+	err := ensureMigrationsTable(ctx, db)
+	if err != nil {
 		return nil, err
 	}
 
@@ -207,7 +223,7 @@ func Status(ctx context.Context, db *sql.DB) ([]MigrationStatus, error) {
 	registered := getRegisteredMigrations()
 
 	// Build status list
-	var statuses []MigrationStatus
+	statuses := make([]MigrationStatus, 0, len(registered))
 	for _, m := range registered {
 		status := MigrationStatus{
 			Version:     m.Version,
@@ -228,18 +244,19 @@ func Status(ctx context.Context, db *sql.DB) ([]MigrationStatus, error) {
 // Latest returns the latest executed migration version
 func Latest(ctx context.Context, db *sql.DB) (string, error) {
 	// Ensure migrations table exists
-	if err := ensureMigrationsTable(ctx, db); err != nil {
+	err := ensureMigrationsTable(ctx, db)
+	if err != nil {
 		return "", err
 	}
 
 	var version string
-	err := db.QueryRowContext(ctx, `
+	err = db.QueryRowContext(ctx, `
 		SELECT version FROM _migrations
 		ORDER BY version DESC
 		LIMIT 1
 	`).Scan(&version)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return "", nil // No migrations executed yet
 	}
 

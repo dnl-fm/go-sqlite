@@ -11,6 +11,8 @@ import (
 
 // NanoID represents a compact, URL-safe unique identifier.
 // Default length is 21 characters using alphabet: _-0-9a-zA-Z
+//
+//nolint:recvcheck // value receivers for getters/marshalers, pointer for UnmarshalJSON
 type NanoID struct {
 	value string
 }
@@ -55,7 +57,8 @@ func NewWithLength(length int) NanoID {
 
 	// Generate random bytes
 	randomBytes := make([]byte, length)
-	if _, err := rand.Read(randomBytes); err != nil {
+	_, err := rand.Read(randomBytes)
+	if err != nil {
 		// Fallback: use a predictable but unique pattern
 		// This should be extremely rare
 		for i := range randomBytes {
@@ -65,7 +68,7 @@ func NewWithLength(length int) NanoID {
 
 	// Map random bytes to alphabet
 	result := make([]byte, length)
-	for i := 0; i < length; i++ {
+	for i := range length {
 		// Use modulo to map byte (0-255) to alphabet index (0-63)
 		// This has slight bias but is acceptable for NanoID use case
 		result[i] = alphabet[int(randomBytes[i])&63] // &63 is same as %64 for powers of 2
@@ -85,7 +88,7 @@ func Parse(s string) (NanoID, error) {
 	}
 
 	// Validate all characters are in alphabet
-	for i := 0; i < len(s); i++ {
+	for i := range len(s) {
 		if !strings.ContainsRune(alphabet, rune(s[i])) {
 			return NanoID{}, ErrInvalidCharacter
 		}
@@ -112,8 +115,9 @@ func (n NanoID) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON implements json.Unmarshaler interface.
 func (n *NanoID) UnmarshalJSON(data []byte) error {
 	var s string
-	if err := json.Unmarshal(data, &s); err != nil {
-		return err
+	unmarshalErr := json.Unmarshal(data, &s)
+	if unmarshalErr != nil {
+		return unmarshalErr
 	}
 
 	parsed, err := Parse(s)

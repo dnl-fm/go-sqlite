@@ -18,8 +18,8 @@ var (
 
 // QueryError wraps errors that occur during query execution
 type QueryError struct {
-	Query string
 	Err   error
+	Query string
 }
 
 func (e *QueryError) Error() string {
@@ -32,8 +32,8 @@ func (e *QueryError) Unwrap() error {
 
 // ExecError wraps errors that occur during command execution
 type ExecError struct {
-	Query string
 	Err   error
+	Query string
 }
 
 func (e *ExecError) Error() string {

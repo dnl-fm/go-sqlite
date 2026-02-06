@@ -2,6 +2,7 @@ package query
 
 import (
 	"sort"
+	"unicode"
 )
 
 // ExtractParams returns all unique parameter names found in the SQL string.
@@ -41,13 +42,13 @@ func IsValidParamName(name string) bool {
 
 	// Check first character
 	first := rune(name[0])
-	if !((first >= 'a' && first <= 'z') || (first >= 'A' && first <= 'Z') || first == '_') {
+	if !unicode.IsLetter(first) && first != '_' {
 		return false
 	}
 
 	// Check remaining characters
 	for _, ch := range name[1:] {
-		if !((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '_') {
+		if !unicode.IsLetter(ch) && !unicode.IsDigit(ch) && ch != '_' {
 			return false
 		}
 	}

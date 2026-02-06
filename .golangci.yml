@@ -130,6 +130,21 @@ linters:
           - gocyclo
           - errcheck
           - goconst
+          - cyclop
+          - gocognit
+          - sqlclosecheck
+
+      # Example files are demo code - relaxed linting
+      - path: tmp/examples/
+        linters:
+          - errcheck
+          - gocritic
+          - noinlineerr
+          - govet
+          - funlen
+          - gocyclo
+          - cyclop
+          - rowserrcheck
 
 issues:
   max-issues-per-linter: 0

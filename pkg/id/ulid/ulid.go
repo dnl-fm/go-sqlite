@@ -12,9 +12,11 @@ import (
 
 // ULID represents a 26-character universally unique lexicographically sortable identifier.
 // Format: 10 chars timestamp (48-bit) + 16 chars randomness (80-bit) in Crockford base32.
+//
+//nolint:recvcheck // value receivers for getters/marshalers, pointer for UnmarshalJSON
 type ULID struct {
-	value  [26]byte
 	prefix string
+	value  [26]byte
 }
 
 // Crockford base32 alphabet (no I, L, O, U to avoid confusion)
@@ -45,7 +47,8 @@ func New(prefix string) ULID {
 
 	// Generate random bytes (16 chars, 80 bits = 10 bytes)
 	randomBytes := make([]byte, 10)
-	if _, err := rand.Read(randomBytes); err != nil {
+	_, err := rand.Read(randomBytes)
+	if err != nil {
 		// Fallback to timestamp-based pseudo-randomness if crypto/rand fails
 		// This should be extremely rare
 		for i := range randomBytes {
@@ -80,7 +83,7 @@ func Parse(s string) (ULID, error) {
 	}
 
 	// Validate characters
-	for i := 0; i < 26; i++ {
+	for i := range 26 {
 		c := ulidPart[i]
 		if !isValidBase32Char(c) {
 			return ULID{}, ErrInvalidCharacter
@@ -125,8 +128,9 @@ func (u ULID) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON implements json.Unmarshaler interface.
 func (u *ULID) UnmarshalJSON(data []byte) error {
 	var s string
-	if err := json.Unmarshal(data, &s); err != nil {
-		return err
+	unmarshalErr := json.Unmarshal(data, &s)
+	if unmarshalErr != nil {
+		return unmarshalErr
 	}
 
 	parsed, err := Parse(s)
@@ -142,7 +146,7 @@ func (u *ULID) UnmarshalJSON(data []byte) error {
 func encodeTimestamp(dst *[26]byte, timestamp int64) {
 	// 48-bit timestamp encoded in base32 = 10 characters
 	// timestamp is 64-bit, but we only use lower 48 bits (good until year 10889)
-	ts := uint64(timestamp) & 0xFFFFFFFFFFFF // Mask to 48 bits
+	ts := uint64(timestamp) & 0xFFFFFFFFFFFF //nolint:gosec // intentional 48-bit mask, not overflow
 
 	// Encode from right to left
 	for i := 9; i >= 0; i-- {
@@ -182,39 +186,30 @@ func encodeRandom(dst *[26]byte, random []byte) {
 func decodeTimestamp(value [26]byte) int64 {
 	var ts uint64
 
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		ts = (ts << 5) | uint64(charToValue(value[i]))
 	}
 
-	return int64(ts)
+	return int64(ts) //nolint:gosec // ULID timestamps fit in int64
 }
 
 // charToValue converts a base32 character to its numeric value (0-31).
 func charToValue(c byte) byte {
-	switch {
-	case c >= '0' && c <= '9':
+	// Lookup table approach for lower cyclomatic complexity
+	if c >= '0' && c <= '9' {
 		return c - '0'
-	case c >= 'A' && c <= 'H':
-		return c - 'A' + 10
-	case c >= 'J' && c <= 'K':
-		return c - 'J' + 18
-	case c >= 'M' && c <= 'N':
-		return c - 'M' + 20
-	case c >= 'P' && c <= 'T':
-		return c - 'P' + 22
-	case c >= 'V' && c <= 'Z':
-		return c - 'V' + 27
-	default:
-		return 0
 	}
+	idx := strings.IndexByte(alphabet[10:], c)
+	if idx >= 0 {
+		return byte(idx) + 10
+	}
+	return 0
 }
 
 // isValidBase32Char checks if a character is valid in Crockford base32.
 func isValidBase32Char(c byte) bool {
-	return (c >= '0' && c <= '9') ||
-		(c >= 'A' && c <= 'H') ||
-		(c >= 'J' && c <= 'K') ||
-		(c >= 'M' && c <= 'N') ||
-		(c >= 'P' && c <= 'T') ||
-		(c >= 'V' && c <= 'Z')
+	if c >= '0' && c <= '9' {
+		return true
+	}
+	return strings.IndexByte(alphabet[10:], c) >= 0
 }

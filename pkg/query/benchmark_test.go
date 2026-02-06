@@ -7,7 +7,7 @@ import (
 func BenchmarkBuild_Simple(b *testing.B) {
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, err := Build(
 			"SELECT * FROM users WHERE id = :id",
 			map[string]any{"id": "123"},
@@ -21,7 +21,7 @@ func BenchmarkBuild_Simple(b *testing.B) {
 func BenchmarkBuild_MultipleParams(b *testing.B) {
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, err := Build(
 			"SELECT * FROM users WHERE email = :email AND active = :active AND role = :role",
 			map[string]any{
@@ -49,7 +49,7 @@ func BenchmarkBuild_ManyParams(b *testing.B) {
 	sql := `INSERT INTO table (c1, c2, c3, c4, c5, c6, c7, c8, c9, c10) 
 	        VALUES (:p1, :p2, :p3, :p4, :p5, :p6, :p7, :p8, :p9, :p10)`
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, err := Build(sql, params)
 		if err != nil {
 			b.Fatal(err)
@@ -60,7 +60,7 @@ func BenchmarkBuild_ManyParams(b *testing.B) {
 func BenchmarkBuild_RepeatedParams(b *testing.B) {
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, err := Build(
 			"SELECT * FROM users WHERE name = :search OR email LIKE :search OR bio LIKE :search",
 			map[string]any{"search": "test"},
@@ -74,7 +74,7 @@ func BenchmarkBuild_RepeatedParams(b *testing.B) {
 func BenchmarkNew(b *testing.B) {
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, err := New("SELECT * FROM users")
 		if err != nil {
 			b.Fatal(err)
@@ -87,7 +87,7 @@ func BenchmarkExtractParams(b *testing.B) {
 
 	sql := "SELECT * FROM users WHERE email = :email AND active = :active AND role = :role"
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		ExtractParams(sql)
 	}
 }
@@ -101,7 +101,7 @@ func BenchmarkQuery_SQL(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_ = q.SQL()
 	}
 }
@@ -115,7 +115,7 @@ func BenchmarkQuery_Args(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_ = q.Args()
 	}
 }

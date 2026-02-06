@@ -6,13 +6,13 @@ import (
 
 func TestBuild(t *testing.T) {
 	tests := []struct {
-		name      string
-		sql       string
-		params    map[string]any
-		wantSQL   string
-		wantArgs  int
-		wantErr   bool
-		errType   error
+		params   map[string]any
+		errType  error
+		name     string
+		sql      string
+		wantSQL  string
+		wantArgs int
+		wantErr  bool
 	}{
 		{
 			name:     "valid query with params",

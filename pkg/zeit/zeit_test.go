@@ -49,10 +49,10 @@ func TestNow(t *testing.T) {
 
 func TestFromUser(t *testing.T) {
 	tests := []struct {
+		checkFunc func(*Zeit) error
 		name      string
 		input     string
 		wantErr   bool
-		checkFunc func(*Zeit) error
 	}{
 		{
 			name:    "RFC3339 format",
@@ -230,10 +230,10 @@ func TestAddDays_Negative(t *testing.T) {
 
 func TestAddBusinessDays(t *testing.T) {
 	tests := []struct {
-		name     string
 		start    time.Time
-		days     int
 		expected time.Time
+		name     string
+		days     int
 	}{
 		{
 			name:     "Monday + 1 business day = Tuesday",
@@ -469,10 +469,10 @@ func TestLeapYear(t *testing.T) {
 
 func TestMonthBoundaries(t *testing.T) {
 	tests := []struct {
-		name     string
 		start    time.Time
-		days     int
 		expected time.Time
+		name     string
+		days     int
 	}{
 		{
 			name:     "End of January + 1 day",
