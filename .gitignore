@@ -35,3 +35,4 @@ Thumbs.db
 /bin/
 /dist/
 tmp/coverage.html
+file::memory:*
