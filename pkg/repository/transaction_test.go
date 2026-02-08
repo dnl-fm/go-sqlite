@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/fightbulc/go-turso-kit/pkg/query"
+	"github.com/dnl-fm/go-sqlite/pkg/query"
 	_ "modernc.org/sqlite"
 )
 
@@ -17,7 +17,7 @@ func TestWithTx_Commit(t *testing.T) {
 	ctx := context.Background()
 
 	// Insert within transaction
-	err := repo.WithTx(ctx, func(tx *TxRepository[testUser, string]) error {
+	err := repo.WithTx(ctx, func(tx *Repository[testUser, string]) error {
 		q, err := query.Build(
 			"INSERT INTO users (id, email, name) VALUES (:id, :email, :name)",
 			map[string]any{"id": "1", "email": "alice@test.com", "name": "Alice"},
@@ -50,7 +50,7 @@ func TestWithTx_Rollback(t *testing.T) {
 	ctx := context.Background()
 
 	// Insert then return error to trigger rollback
-	err := repo.WithTx(ctx, func(tx *TxRepository[testUser, string]) error {
+	err := repo.WithTx(ctx, func(tx *Repository[testUser, string]) error {
 		q, err := query.Build(
 			"INSERT INTO users (id, email, name) VALUES (:id, :email, :name)",
 			map[string]any{"id": "1", "email": "alice@test.com", "name": "Alice"},
@@ -85,7 +85,7 @@ func TestWithTx_NilDB(t *testing.T) {
 	repo := New[testUser, string](nil, "users")
 	ctx := context.Background()
 
-	err := repo.WithTx(ctx, func(tx *TxRepository[testUser, string]) error {
+	err := repo.WithTx(ctx, func(tx *Repository[testUser, string]) error {
 		return nil
 	})
 
@@ -94,7 +94,7 @@ func TestWithTx_NilDB(t *testing.T) {
 	}
 }
 
-func TestTxRepository_FindByID(t *testing.T) {
+func TestWithTx_FindByID(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
 
@@ -103,7 +103,7 @@ func TestTxRepository_FindByID(t *testing.T) {
 	repo := New[testUser, string](db, "users")
 	ctx := context.Background()
 
-	err := repo.WithTx(ctx, func(tx *TxRepository[testUser, string]) error {
+	err := repo.WithTx(ctx, func(tx *Repository[testUser, string]) error {
 		user, err := tx.FindByID(ctx, "1")
 		if err != nil {
 			return err
@@ -118,14 +118,14 @@ func TestTxRepository_FindByID(t *testing.T) {
 	}
 }
 
-func TestTxRepository_FindByID_NotFound(t *testing.T) {
+func TestWithTx_FindByID_NotFound(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
 
 	repo := New[testUser, string](db, "users")
 	ctx := context.Background()
 
-	err := repo.WithTx(ctx, func(tx *TxRepository[testUser, string]) error {
+	err := repo.WithTx(ctx, func(tx *Repository[testUser, string]) error {
 		_, err := tx.FindByID(ctx, "nonexistent")
 		if !errors.Is(err, ErrNotFound) {
 			t.Errorf("expected ErrNotFound, got %v", err)
@@ -137,7 +137,7 @@ func TestTxRepository_FindByID_NotFound(t *testing.T) {
 	}
 }
 
-func TestTxRepository_FindAll(t *testing.T) {
+func TestWithTx_FindAll(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
 
@@ -147,7 +147,7 @@ func TestTxRepository_FindAll(t *testing.T) {
 	repo := New[testUser, string](db, "users")
 	ctx := context.Background()
 
-	err := repo.WithTx(ctx, func(tx *TxRepository[testUser, string]) error {
+	err := repo.WithTx(ctx, func(tx *Repository[testUser, string]) error {
 		users, err := tx.FindAll(ctx)
 		if err != nil {
 			return err
@@ -162,7 +162,7 @@ func TestTxRepository_FindAll(t *testing.T) {
 	}
 }
 
-func TestTxRepository_FindByQuery(t *testing.T) {
+func TestWithTx_FindByQuery(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
 
@@ -172,7 +172,7 @@ func TestTxRepository_FindByQuery(t *testing.T) {
 	repo := New[testUser, string](db, "users")
 	ctx := context.Background()
 
-	err := repo.WithTx(ctx, func(tx *TxRepository[testUser, string]) error {
+	err := repo.WithTx(ctx, func(tx *Repository[testUser, string]) error {
 		q, err := query.Build(
 			"SELECT * FROM users WHERE name = :name",
 			map[string]any{"name": "Alice"},
@@ -198,14 +198,14 @@ func TestTxRepository_FindByQuery(t *testing.T) {
 	}
 }
 
-func TestTxRepository_FindByQuery_NilQuery(t *testing.T) {
+func TestWithTx_FindByQuery_NilQuery(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
 
 	repo := New[testUser, string](db, "users")
 	ctx := context.Background()
 
-	err := repo.WithTx(ctx, func(tx *TxRepository[testUser, string]) error {
+	err := repo.WithTx(ctx, func(tx *Repository[testUser, string]) error {
 		_, err := tx.FindByQuery(ctx, nil)
 		if err == nil {
 			t.Error("expected error for nil query")
@@ -217,7 +217,7 @@ func TestTxRepository_FindByQuery_NilQuery(t *testing.T) {
 	}
 }
 
-func TestTxRepository_FindOneByQuery(t *testing.T) {
+func TestWithTx_FindOneByQuery(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
 
@@ -226,7 +226,7 @@ func TestTxRepository_FindOneByQuery(t *testing.T) {
 	repo := New[testUser, string](db, "users")
 	ctx := context.Background()
 
-	err := repo.WithTx(ctx, func(tx *TxRepository[testUser, string]) error {
+	err := repo.WithTx(ctx, func(tx *Repository[testUser, string]) error {
 		q, err := query.Build(
 			"SELECT * FROM users WHERE id = :id",
 			map[string]any{"id": "1"},
@@ -253,14 +253,14 @@ func TestTxRepository_FindOneByQuery(t *testing.T) {
 	}
 }
 
-func TestTxRepository_FindOneByQuery_NotFound(t *testing.T) {
+func TestWithTx_FindOneByQuery_NotFound(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
 
 	repo := New[testUser, string](db, "users")
 	ctx := context.Background()
 
-	err := repo.WithTx(ctx, func(tx *TxRepository[testUser, string]) error {
+	err := repo.WithTx(ctx, func(tx *Repository[testUser, string]) error {
 		q, err := query.Build(
 			"SELECT * FROM users WHERE id = :id",
 			map[string]any{"id": "nonexistent"},
@@ -283,7 +283,7 @@ func TestTxRepository_FindOneByQuery_NotFound(t *testing.T) {
 	}
 }
 
-func TestTxRepository_Count(t *testing.T) {
+func TestWithTx_Count(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
 
@@ -293,7 +293,7 @@ func TestTxRepository_Count(t *testing.T) {
 	repo := New[testUser, string](db, "users")
 	ctx := context.Background()
 
-	err := repo.WithTx(ctx, func(tx *TxRepository[testUser, string]) error {
+	err := repo.WithTx(ctx, func(tx *Repository[testUser, string]) error {
 		count, err := tx.Count(ctx)
 		if err != nil {
 			return err
@@ -308,7 +308,7 @@ func TestTxRepository_Count(t *testing.T) {
 	}
 }
 
-func TestTxRepository_Exists(t *testing.T) {
+func TestWithTx_Exists(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
 
@@ -317,7 +317,7 @@ func TestTxRepository_Exists(t *testing.T) {
 	repo := New[testUser, string](db, "users")
 	ctx := context.Background()
 
-	err := repo.WithTx(ctx, func(tx *TxRepository[testUser, string]) error {
+	err := repo.WithTx(ctx, func(tx *Repository[testUser, string]) error {
 		exists, err := tx.Exists(ctx, "1")
 		if err != nil {
 			return err
@@ -340,14 +340,14 @@ func TestTxRepository_Exists(t *testing.T) {
 	}
 }
 
-func TestTxRepository_Insert(t *testing.T) {
+func TestWithTx_Insert(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
 
 	repo := New[testUser, string](db, "users")
 	ctx := context.Background()
 
-	err := repo.WithTx(ctx, func(tx *TxRepository[testUser, string]) error {
+	err := repo.WithTx(ctx, func(tx *Repository[testUser, string]) error {
 		q, err := query.Build(
 			"INSERT INTO users (id, email, name) VALUES (:id, :email, :name)",
 			map[string]any{"id": "1", "email": "alice@test.com", "name": "Alice"},
@@ -376,14 +376,14 @@ func TestTxRepository_Insert(t *testing.T) {
 	}
 }
 
-func TestTxRepository_Insert_NilQuery(t *testing.T) {
+func TestWithTx_Insert_NilQuery(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
 
 	repo := New[testUser, string](db, "users")
 	ctx := context.Background()
 
-	err := repo.WithTx(ctx, func(tx *TxRepository[testUser, string]) error {
+	err := repo.WithTx(ctx, func(tx *Repository[testUser, string]) error {
 		_, err := tx.Insert(ctx, nil)
 		if err == nil {
 			t.Error("expected error for nil query")
@@ -395,7 +395,7 @@ func TestTxRepository_Insert_NilQuery(t *testing.T) {
 	}
 }
 
-func TestTxRepository_Update(t *testing.T) {
+func TestWithTx_Update(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
 
@@ -404,7 +404,7 @@ func TestTxRepository_Update(t *testing.T) {
 	repo := New[testUser, string](db, "users")
 	ctx := context.Background()
 
-	err := repo.WithTx(ctx, func(tx *TxRepository[testUser, string]) error {
+	err := repo.WithTx(ctx, func(tx *Repository[testUser, string]) error {
 		q, err := query.Build(
 			"UPDATE users SET name = :name WHERE id = :id",
 			map[string]any{"id": "1", "name": "Alicia"},
@@ -433,14 +433,14 @@ func TestTxRepository_Update(t *testing.T) {
 	}
 }
 
-func TestTxRepository_Update_NilQuery(t *testing.T) {
+func TestWithTx_Update_NilQuery(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
 
 	repo := New[testUser, string](db, "users")
 	ctx := context.Background()
 
-	err := repo.WithTx(ctx, func(tx *TxRepository[testUser, string]) error {
+	err := repo.WithTx(ctx, func(tx *Repository[testUser, string]) error {
 		_, err := tx.Update(ctx, nil)
 		if err == nil {
 			t.Error("expected error for nil query")
@@ -452,7 +452,7 @@ func TestTxRepository_Update_NilQuery(t *testing.T) {
 	}
 }
 
-func TestTxRepository_Delete(t *testing.T) {
+func TestWithTx_Delete(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
 
@@ -461,7 +461,7 @@ func TestTxRepository_Delete(t *testing.T) {
 	repo := New[testUser, string](db, "users")
 	ctx := context.Background()
 
-	err := repo.WithTx(ctx, func(tx *TxRepository[testUser, string]) error {
+	err := repo.WithTx(ctx, func(tx *Repository[testUser, string]) error {
 		q, err := query.Build(
 			"DELETE FROM users WHERE id = :id",
 			map[string]any{"id": "1"},
@@ -487,14 +487,14 @@ func TestTxRepository_Delete(t *testing.T) {
 	}
 }
 
-func TestTxRepository_Delete_NilQuery(t *testing.T) {
+func TestWithTx_Delete_NilQuery(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
 
 	repo := New[testUser, string](db, "users")
 	ctx := context.Background()
 
-	err := repo.WithTx(ctx, func(tx *TxRepository[testUser, string]) error {
+	err := repo.WithTx(ctx, func(tx *Repository[testUser, string]) error {
 		_, err := tx.Delete(ctx, nil)
 		if err == nil {
 			t.Error("expected error for nil query")
@@ -506,7 +506,7 @@ func TestTxRepository_Delete_NilQuery(t *testing.T) {
 	}
 }
 
-func TestTxRepository_DeleteByID(t *testing.T) {
+func TestWithTx_DeleteByID(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
 
@@ -515,7 +515,7 @@ func TestTxRepository_DeleteByID(t *testing.T) {
 	repo := New[testUser, string](db, "users")
 	ctx := context.Background()
 
-	err := repo.WithTx(ctx, func(tx *TxRepository[testUser, string]) error {
+	err := repo.WithTx(ctx, func(tx *Repository[testUser, string]) error {
 		err := tx.DeleteByID(ctx, "1")
 		if err != nil {
 			return err
@@ -533,14 +533,14 @@ func TestTxRepository_DeleteByID(t *testing.T) {
 	}
 }
 
-func TestTxRepository_DeleteByID_NotFound(t *testing.T) {
+func TestWithTx_DeleteByID_NotFound(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
 
 	repo := New[testUser, string](db, "users")
 	ctx := context.Background()
 
-	err := repo.WithTx(ctx, func(tx *TxRepository[testUser, string]) error {
+	err := repo.WithTx(ctx, func(tx *Repository[testUser, string]) error {
 		err := tx.DeleteByID(ctx, "nonexistent")
 		if !errors.Is(err, ErrNotFound) {
 			t.Errorf("expected ErrNotFound, got %v", err)
@@ -552,25 +552,7 @@ func TestTxRepository_DeleteByID_NotFound(t *testing.T) {
 	}
 }
 
-func TestTxRepository_Tx(t *testing.T) {
-	db := setupTestDB(t)
-	defer db.Close()
-
-	repo := New[testUser, string](db, "users")
-	ctx := context.Background()
-
-	err := repo.WithTx(ctx, func(tx *TxRepository[testUser, string]) error {
-		if tx.Tx() == nil {
-			t.Error("Tx() should not return nil")
-		}
-		return nil
-	})
-	if err != nil {
-		t.Fatalf("WithTx failed: %v", err)
-	}
-}
-
-func TestTxRepository_MultipleOperations(t *testing.T) {
+func TestWithTx_MultipleOperations(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
 
@@ -578,7 +560,7 @@ func TestTxRepository_MultipleOperations(t *testing.T) {
 	ctx := context.Background()
 
 	// Multiple operations in single transaction
-	err := repo.WithTx(ctx, func(tx *TxRepository[testUser, string]) error {
+	err := repo.WithTx(ctx, func(tx *Repository[testUser, string]) error {
 		// Insert first user
 		q1, _ := query.Build(
 			"INSERT INTO users (id, email, name) VALUES (:id, :email, :name)",
@@ -639,7 +621,7 @@ func TestTxRepository_MultipleOperations(t *testing.T) {
 	}
 }
 
-func TestTxRepository_IsolationFromOutside(t *testing.T) {
+func TestWithTx_IsolationFromOutside(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
 
@@ -649,7 +631,7 @@ func TestTxRepository_IsolationFromOutside(t *testing.T) {
 	ctx := context.Background()
 
 	// Start transaction but don't commit yet
-	err := repo.WithTx(ctx, func(tx *TxRepository[testUser, string]) error {
+	err := repo.WithTx(ctx, func(tx *Repository[testUser, string]) error {
 		// Update within transaction
 		q, _ := query.Build(
 			"UPDATE users SET name = :name WHERE id = :id",

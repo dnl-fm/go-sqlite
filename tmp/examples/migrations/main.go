@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"log"
 
-	_ "github.com/fightbulc/go-turso-kit/pkg/driver/modernc"
+	_ "github.com/dnl-fm/go-sqlite/pkg/driver/modernc"
 
-	"github.com/fightbulc/go-turso-kit/pkg/migrations"
+	"github.com/dnl-fm/go-sqlite/pkg/migrations"
 )
 
 func main() {

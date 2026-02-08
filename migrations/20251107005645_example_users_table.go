@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/fightbulc/go-turso-kit/pkg/migrations"
+	"github.com/dnl-fm/go-sqlite/pkg/migrations"
 )
 
 func init() {

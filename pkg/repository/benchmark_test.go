@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fightbulc/go-turso-kit/pkg/query"
+	"github.com/dnl-fm/go-sqlite/pkg/query"
 	_ "modernc.org/sqlite"
 )
 
@@ -138,7 +138,7 @@ func BenchmarkTransaction(b *testing.B) {
 	b.ReportAllocs()
 
 	for i := range b.N {
-		err := repo.WithTx(ctx, func(tx *TxRepository[testUser, string]) error {
+		err := repo.WithTx(ctx, func(tx *Repository[testUser, string]) error {
 			q, _ := query.Build(
 				"INSERT INTO users (id, email, name) VALUES (:id, :email, :name)",
 				map[string]any{
@@ -305,7 +305,7 @@ func TestConcurrentTransactions(t *testing.T) {
 		go func(id int) {
 			defer wg.Done()
 			for i := range iterations {
-				err := repo.WithTx(ctx, func(tx *TxRepository[testUser, string]) error {
+				err := repo.WithTx(ctx, func(tx *Repository[testUser, string]) error {
 					q, _ := query.Build(
 						"INSERT INTO users (id, email, name) VALUES (:id, :email, :name)",
 						map[string]any{

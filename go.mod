@@ -1,4 +1,4 @@
-module github.com/fightbulc/go-turso-kit
+module github.com/dnl-fm/go-sqlite
 
 go 1.25.2
 

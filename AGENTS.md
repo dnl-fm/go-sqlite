@@ -1,9 +1,8 @@
-# github.com/fightbulc/go-turso-kit
+# github.com/dnl-fm/go-sqlite
 
 ## Stack
 
 - go
-- turso
 - sqlite
 
 ## Components
@@ -11,7 +10,6 @@
 | Name | Path | Type |
 |------|------|------|
 | migrate | `cmd/migrate/` | cli |
-| core | `internal/` | lib |
 | pkg | `pkg/` | lib |
 
 ## Commands
@@ -20,6 +18,8 @@
 # Test
 make test
 
+# Build migrate CLI
+make build
 ```
 
 ## Specs
@@ -46,10 +46,6 @@ integrations: [firebase-auth]      # External systems
 ---
 ```
 
-**Tags help answer:** "Which spec covers X?" - search by tag when unsure.
-
-**Sections use numbered headings** (`§1`, `§1.1`) for precise citations.
-
 ### Workflow
 
 ```bash
@@ -60,13 +56,3 @@ ralph plan <spec>           # Generate implementation plan
 ralph <plan>                # Execute plan
 ralph verify <spec>         # Verify implementation matches spec
 ```
-
-### Drift Check (Pre-commit)
-
-Drift check runs automatically on commit:
-
-1. Checks staged files against spec `owner:` paths
-2. If overlap, verifies spec still matches code
-3. Auto-fixes drift (updates spec or code)
-4. Re-runs back pressure (`make test`, `make lint`)
-5. Stages fixes, commit proceeds

@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"log"
 
-	_ "github.com/fightbulc/go-turso-kit/pkg/driver/modernc"
+	_ "github.com/dnl-fm/go-sqlite/pkg/driver/modernc"
 
-	"github.com/fightbulc/go-turso-kit/pkg/query"
-	"github.com/fightbulc/go-turso-kit/pkg/repository"
+	"github.com/dnl-fm/go-sqlite/pkg/query"
+	"github.com/dnl-fm/go-sqlite/pkg/repository"
 )
 
 // Account represents a bank account
@@ -81,7 +81,7 @@ func main() {
 }
 
 func transfer(ctx context.Context, repo *repository.Repository[Account, int], fromID, toID int, amount float64) error {
-	return repo.WithTx(ctx, func(tx *repository.TxRepository[Account, int]) error {
+	return repo.WithTx(ctx, func(tx *repository.Repository[Account, int]) error {
 		// Get source account
 		from, err := tx.FindByID(ctx, fromID)
 		if err != nil {

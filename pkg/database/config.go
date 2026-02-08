@@ -24,6 +24,7 @@ func DefaultConfig() *Config {
 		Pragmas: map[string]string{
 			"journal_mode": "WAL",
 			"synchronous":  "NORMAL",
+			"foreign_keys": "ON",
 			"cache_size":   "-20000", // 20MB
 			"busy_timeout": "5000",
 		},

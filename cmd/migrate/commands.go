@@ -11,8 +11,8 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/fightbulc/go-turso-kit/pkg/migrations"
-	_ "github.com/fightbulc/go-turso-kit/pkg/driver/modernc"
+	"github.com/dnl-fm/go-sqlite/pkg/migrations"
+	_ "github.com/dnl-fm/go-sqlite/pkg/driver/modernc"
 )
 
 // getDatabaseURL returns the database URL from environment
@@ -268,7 +268,7 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/fightbulc/go-turso-kit/pkg/migrations"
+	"github.com/dnl-fm/go-sqlite/pkg/migrations"
 )
 
 // Package import path: {{.ModuleName}}/migrations

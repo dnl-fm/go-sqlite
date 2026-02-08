@@ -6,7 +6,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/fightbulc/go-turso-kit/pkg/query"
+	"github.com/dnl-fm/go-sqlite/pkg/query"
 	_ "modernc.org/sqlite"
 )
 

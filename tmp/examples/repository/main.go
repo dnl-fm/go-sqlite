@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"log"
 
-	_ "github.com/fightbulc/go-turso-kit/pkg/driver/modernc"
+	_ "github.com/dnl-fm/go-sqlite/pkg/driver/modernc"
 
-	"github.com/fightbulc/go-turso-kit/pkg/query"
-	"github.com/fightbulc/go-turso-kit/pkg/repository"
+	"github.com/dnl-fm/go-sqlite/pkg/query"
+	"github.com/dnl-fm/go-sqlite/pkg/repository"
 )
 
 // User is an example entity with db struct tags
@@ -146,7 +146,7 @@ func main() {
 
 	// Transaction example
 	fmt.Println("\n=== Transaction Example ===")
-	err = userRepo.WithTx(ctx, func(txRepo *repository.TxRepository[User, int]) error {
+	err = userRepo.WithTx(ctx, func(txRepo *repository.Repository[User, int]) error {
 		// Insert in transaction
 		q, err := query.Build(
 			"INSERT INTO users (name, email) VALUES (:name, :email)",

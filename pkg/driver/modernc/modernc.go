@@ -2,7 +2,7 @@
 //
 // Import as blank import to register the driver:
 //
-//	import _ "github.com/fightbulc/go-turso-kit/pkg/driver/modernc"
+//	import _ "github.com/dnl-fm/go-sqlite/pkg/driver/modernc"
 //
 // Then use with database.Open:
 //

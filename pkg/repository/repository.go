@@ -8,8 +8,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/fightbulc/go-turso-kit/pkg/query"
-	"github.com/fightbulc/go-turso-kit/pkg/scan"
+	"github.com/dnl-fm/go-sqlite/pkg/query"
+	"github.com/dnl-fm/go-sqlite/pkg/scan"
 )
 
 var (
@@ -20,6 +20,13 @@ var (
 	// ErrEmptyTableName is returned when table name is empty
 	ErrEmptyTableName = errors.New("repository: table name cannot be empty")
 )
+
+// DBTX is the common interface shared by *sql.DB and *sql.Tx.
+type DBTX interface {
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+}
 
 // Repository provides generic CRUD operations for entities.
 // Entities must use `db` struct tags for column mapping.
@@ -35,14 +42,14 @@ var (
 //	repo := repository.New[User, string](db, "users")
 //	user, err := repo.FindByID(ctx, "user_123")
 type Repository[T any, ID comparable] struct {
-	db        *sql.DB
+	db        DBTX
 	tableName string
 }
 
 // New creates a new Repository instance.
 // T is the entity type (must have `db` struct tags).
 // ID is the primary key type.
-func New[T any, ID comparable](db *sql.DB, tableName string) *Repository[T, ID] {
+func New[T any, ID comparable](db DBTX, tableName string) *Repository[T, ID] {
 	return &Repository[T, ID]{
 		db:        db,
 		tableName: tableName,
@@ -50,7 +57,7 @@ func New[T any, ID comparable](db *sql.DB, tableName string) *Repository[T, ID] 
 }
 
 // DB returns the underlying database connection.
-func (r *Repository[T, ID]) DB() *sql.DB {
+func (r *Repository[T, ID]) DB() DBTX {
 	return r.db
 }
 

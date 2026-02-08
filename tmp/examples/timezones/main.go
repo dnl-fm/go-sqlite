@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/fightbulc/go-turso-kit/pkg/zeit"
+	"github.com/dnl-fm/go-sqlite/pkg/zeit"
 )
 
 func main() {
