@@ -5,20 +5,17 @@ import (
 	"time"
 )
 
-func TestNewDuration(t *testing.T) {
+func TestUntil(t *testing.T) {
 	start := Now(time.UTC)
 	end := start.Add(24 * time.Hour)
 
-	d := NewDuration(start, end)
+	d := start.Until(end)
 
 	if d == nil {
-		t.Fatal("NewDuration() returned nil")
+		t.Fatal("Until() returned nil")
 	}
-	if d.start != start {
-		t.Error("Start time mismatch")
-	}
-	if d.end != end {
-		t.Error("End time mismatch")
+	if d.Days() != 1 {
+		t.Errorf("Expected 1 day, got %d", d.Days())
 	}
 }
 
@@ -57,14 +54,74 @@ func TestDuration_Days(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			d := NewDuration(
-				New(tt.start, time.UTC),
-				New(tt.end, time.UTC),
-			)
+			d := New(tt.start, time.UTC).Until(New(tt.end, time.UTC))
 
 			result := d.Days()
 			if result != tt.expected {
 				t.Errorf("Expected %d days, got %d", tt.expected, result)
+			}
+		})
+	}
+}
+
+func TestDuration_Months(t *testing.T) {
+	tests := []struct {
+		start    time.Time
+		end      time.Time
+		name     string
+		expected int
+	}{
+		{
+			name:     "Same month",
+			start:    time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+			end:      time.Date(2024, 1, 31, 0, 0, 0, 0, time.UTC),
+			expected: 0,
+		},
+		{
+			name:     "One month exact",
+			start:    time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC),
+			end:      time.Date(2024, 2, 15, 0, 0, 0, 0, time.UTC),
+			expected: 1,
+		},
+		{
+			name:     "One month minus one day",
+			start:    time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC),
+			end:      time.Date(2024, 2, 14, 0, 0, 0, 0, time.UTC),
+			expected: 0,
+		},
+		{
+			name:     "Three months",
+			start:    time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+			end:      time.Date(2024, 4, 1, 0, 0, 0, 0, time.UTC),
+			expected: 3,
+		},
+		{
+			name:     "Across year boundary",
+			start:    time.Date(2024, 11, 1, 0, 0, 0, 0, time.UTC),
+			end:      time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC),
+			expected: 3,
+		},
+		{
+			name:     "One year",
+			start:    time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+			end:      time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+			expected: 12,
+		},
+		{
+			name:     "Reversed dates",
+			start:    time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC),
+			end:      time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+			expected: 5,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d := New(tt.start, time.UTC).Until(New(tt.end, time.UTC))
+
+			result := d.Months()
+			if result != tt.expected {
+				t.Errorf("Expected %d months, got %d", tt.expected, result)
 			}
 		})
 	}
@@ -87,13 +144,13 @@ func TestDuration_BusinessDays(t *testing.T) {
 			name:     "Monday to Monday (1 week)",
 			start:    time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC), // Monday
 			end:      time.Date(2024, 1, 22, 10, 0, 0, 0, time.UTC), // Monday
-			expected: 5, // Mon-Fri (5 business days)
+			expected: 5, // Mon-Fri
 		},
 		{
 			name:     "Friday to Monday (over weekend)",
 			start:    time.Date(2024, 1, 19, 10, 0, 0, 0, time.UTC), // Friday
 			end:      time.Date(2024, 1, 22, 10, 0, 0, 0, time.UTC), // Monday
-			expected: 1, // Just Friday (Mon is exclusive)
+			expected: 1, // Just Friday
 		},
 		{
 			name:     "Same day",
@@ -111,16 +168,13 @@ func TestDuration_BusinessDays(t *testing.T) {
 			name:     "Two weeks",
 			start:    time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC), // Monday
 			end:      time.Date(2024, 1, 29, 10, 0, 0, 0, time.UTC), // Monday +2 weeks
-			expected: 10,                                             // 2 weeks * 5 business days
+			expected: 10,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			d := NewDuration(
-				New(tt.start, time.UTC),
-				New(tt.end, time.UTC),
-			)
+			d := New(tt.start, time.UTC).Until(New(tt.end, time.UTC))
 
 			result := d.BusinessDays()
 			if result != tt.expected {
@@ -131,19 +185,14 @@ func TestDuration_BusinessDays(t *testing.T) {
 }
 
 func TestDuration_BusinessDays_Reversed(t *testing.T) {
-	// Test with end before start (should still calculate correctly)
 	start := time.Date(2024, 1, 22, 10, 0, 0, 0, time.UTC) // Monday
 	end := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)   // Monday -1 week
 
-	d := NewDuration(
-		New(start, time.UTC),
-		New(end, time.UTC),
-	)
+	d := New(start, time.UTC).Until(New(end, time.UTC))
 
-	// Should handle reversed dates gracefully
 	result := d.BusinessDays()
-	if result < 0 {
-		t.Error("BusinessDays() should not return negative for reversed dates")
+	if result != 5 {
+		t.Errorf("Expected 5 business days for reversed dates, got %d", result)
 	}
 }
 
@@ -175,7 +224,7 @@ func TestDuration_Hours(t *testing.T) {
 			start := Now(time.UTC)
 			end := start.Add(tt.duration)
 
-			d := NewDuration(start, end)
+			d := start.Until(end)
 			result := d.Hours()
 
 			if result != tt.expected {
@@ -213,7 +262,7 @@ func TestDuration_Minutes(t *testing.T) {
 			start := Now(time.UTC)
 			end := start.Add(tt.duration)
 
-			d := NewDuration(start, end)
+			d := start.Until(end)
 			result := d.Minutes()
 
 			if result != tt.expected {
@@ -227,10 +276,10 @@ func TestDuration_Seconds(t *testing.T) {
 	start := Now(time.UTC)
 	end := start.Add(2*time.Minute + 30*time.Second)
 
-	d := NewDuration(start, end)
+	d := start.Until(end)
 	result := d.Seconds()
 
-	expected := 150 // 2*60 + 30
+	expected := 150
 	if result != expected {
 		t.Errorf("Expected %d seconds, got %d", expected, result)
 	}
@@ -241,7 +290,7 @@ func TestDuration_Raw(t *testing.T) {
 	duration := 5*time.Hour + 30*time.Minute
 	end := start.Add(duration)
 
-	d := NewDuration(start, end)
+	d := start.Until(end)
 	result := d.Raw()
 
 	if result != duration {
@@ -253,20 +302,14 @@ func TestDuration_CrossMonthBoundary(t *testing.T) {
 	start := time.Date(2024, 1, 31, 10, 0, 0, 0, time.UTC)
 	end := time.Date(2024, 2, 5, 10, 0, 0, 0, time.UTC)
 
-	d := NewDuration(
-		New(start, time.UTC),
-		New(end, time.UTC),
-	)
+	d := New(start, time.UTC).Until(New(end, time.UTC))
 
-	// 31 Jan -> 5 Feb = 5 days
 	days := d.Days()
 	if days != 5 {
 		t.Errorf("Expected 5 days, got %d", days)
 	}
 
-	// Business days: Thu 1 Feb, Fri 2 Feb, Mon 5 Feb (Sat/Sun skipped)
-	// Actually: Jan 31 (Wed) is start, Feb 1-2 are Thu-Fri, Feb 3-4 are Sat-Sun, Feb 5 is Mon
-	// Counting: Wed, Thu, Fri, Mon = 3 business days (excluding end)
+	// Wed Jan 31 to Mon Feb 5: Wed, Thu, Fri = 3 business days (Sat/Sun skipped, Mon excluded)
 	businessDays := d.BusinessDays()
 	if businessDays != 3 {
 		t.Errorf("Expected 3 business days, got %d", businessDays)
@@ -274,16 +317,11 @@ func TestDuration_CrossMonthBoundary(t *testing.T) {
 }
 
 func TestDuration_LeapYear(t *testing.T) {
-	// 2024 is a leap year
 	start := time.Date(2024, 2, 28, 10, 0, 0, 0, time.UTC)
 	end := time.Date(2024, 3, 1, 10, 0, 0, 0, time.UTC)
 
-	d := NewDuration(
-		New(start, time.UTC),
-		New(end, time.UTC),
-	)
+	d := New(start, time.UTC).Until(New(end, time.UTC))
 
-	// Feb 28 -> Mar 1 = 2 days (includes Feb 29)
 	days := d.Days()
 	if days != 2 {
 		t.Errorf("Expected 2 days (leap year), got %d", days)
@@ -292,7 +330,7 @@ func TestDuration_LeapYear(t *testing.T) {
 
 func TestDuration_ZeroDuration(t *testing.T) {
 	now := Now(time.UTC)
-	d := NewDuration(now, now)
+	d := now.Until(now)
 
 	if d.Days() != 0 {
 		t.Error("Expected 0 days for same instant")
@@ -306,21 +344,47 @@ func TestDuration_ZeroDuration(t *testing.T) {
 	if d.Minutes() != 0 {
 		t.Error("Expected 0 minutes for same instant")
 	}
+	if d.Months() != 0 {
+		t.Error("Expected 0 months for same instant")
+	}
 }
 
 func TestDuration_DifferentTimezones(t *testing.T) {
 	ny, _ := time.LoadLocation("America/New_York")
 	tokyo, _ := time.LoadLocation("Asia/Tokyo")
 
-	// Same instant, different timezones
 	instant := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
 	start := New(instant, ny)
 	end := New(instant.Add(24*time.Hour), tokyo)
 
-	d := NewDuration(start, end)
+	d := start.Until(end)
 
-	// Should calculate based on actual time difference, not timezone
 	if d.Days() != 1 {
 		t.Error("Timezone should not affect duration calculation")
+	}
+}
+
+// Proration scenario test
+func TestDuration_Proration(t *testing.T) {
+	// Customer subscribes Jan 1, cancels Jan 15
+	tz := time.UTC
+	billingStart := New(time.Date(2024, 1, 1, 0, 0, 0, 0, tz), tz)
+	cancelled := New(time.Date(2024, 1, 15, 0, 0, 0, 0, tz), tz)
+
+	usedDays := billingStart.Until(cancelled).Days()
+	totalDays := cancelled.DaysInMonth()
+
+	if usedDays != 14 {
+		t.Errorf("Expected 14 used days, got %d", usedDays)
+	}
+	if totalDays != 31 {
+		t.Errorf("Expected 31 total days, got %d", totalDays)
+	}
+
+	// Prorate: 14/31 * 100 = ~45.16
+	monthlyPrice := 100.0
+	proratedPrice := monthlyPrice * float64(usedDays) / float64(totalDays)
+	if proratedPrice < 45.0 || proratedPrice > 46.0 {
+		t.Errorf("Expected prorated price ~45.16, got %.2f", proratedPrice)
 	}
 }

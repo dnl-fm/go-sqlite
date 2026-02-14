@@ -544,6 +544,83 @@ func TestScanThenIn(t *testing.T) {
 	}
 }
 
+func TestDaysInMonth(t *testing.T) {
+	tests := []struct {
+		name     string
+		date     time.Time
+		expected int
+	}{
+		{"January", time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC), 31},
+		{"February (leap)", time.Date(2024, 2, 10, 0, 0, 0, 0, time.UTC), 29},
+		{"February (non-leap)", time.Date(2023, 2, 10, 0, 0, 0, 0, time.UTC), 28},
+		{"April", time.Date(2024, 4, 1, 0, 0, 0, 0, time.UTC), 30},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			z := New(tt.date, time.UTC)
+			if z.DaysInMonth() != tt.expected {
+				t.Errorf("Expected %d, got %d", tt.expected, z.DaysInMonth())
+			}
+		})
+	}
+}
+
+func TestDayOfMonth(t *testing.T) {
+	z := New(time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC), time.UTC)
+	if z.DayOfMonth() != 15 {
+		t.Errorf("Expected 15, got %d", z.DayOfMonth())
+	}
+}
+
+func TestStartOfMonth(t *testing.T) {
+	z := New(time.Date(2024, 3, 15, 14, 30, 0, 0, time.UTC), time.UTC)
+	start := z.StartOfMonth()
+
+	expected := "2024-03-01T00:00:00Z"
+	if start.ToUser() != expected {
+		t.Errorf("Expected %s, got %s", expected, start.ToUser())
+	}
+	if start.Location() != time.UTC {
+		t.Error("StartOfMonth should preserve timezone")
+	}
+}
+
+func TestEndOfMonth(t *testing.T) {
+	z := New(time.Date(2024, 2, 10, 0, 0, 0, 0, time.UTC), time.UTC)
+	end := z.EndOfMonth()
+
+	expected := "2024-02-29T23:59:59Z" // leap year
+	if end.ToUser() != expected {
+		t.Errorf("Expected %s, got %s", expected, end.ToUser())
+	}
+}
+
+func TestStartEndOfMonth_WithTimezone(t *testing.T) {
+	berlin, _ := time.LoadLocation("Europe/Berlin")
+	z := New(time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC), berlin)
+
+	start := z.StartOfMonth()
+	end := z.EndOfMonth()
+
+	if start.Location() != berlin {
+		t.Error("StartOfMonth should preserve timezone")
+	}
+	if end.Location() != berlin {
+		t.Error("EndOfMonth should preserve timezone")
+	}
+}
+
+func TestUntilMethod(t *testing.T) {
+	start := New(time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), time.UTC)
+	end := New(time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC), time.UTC)
+
+	d := start.Until(end)
+	if d.Days() != 14 {
+		t.Errorf("Expected 14 days, got %d", d.Days())
+	}
+}
+
 func TestTimezonePreservation(t *testing.T) {
 	ny, _ := time.LoadLocation("America/New_York")
 	base := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)

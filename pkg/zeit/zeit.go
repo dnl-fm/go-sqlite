@@ -180,6 +180,36 @@ func (z *Zeit) Scan(src any) error {
 	}
 }
 
+// Until returns a Duration from z to other.
+func (z *Zeit) Until(other *Zeit) *Duration {
+	return &Duration{start: z, end: other}
+}
+
+// DaysInMonth returns the number of days in the Zeit's month (28-31).
+func (z *Zeit) DaysInMonth() int {
+	t := z.instant.In(z.location)
+	// First day of next month, minus one day
+	return time.Date(t.Year(), t.Month()+1, 0, 0, 0, 0, 0, z.location).Day()
+}
+
+// DayOfMonth returns the day of the month (1-31).
+func (z *Zeit) DayOfMonth() int {
+	return z.instant.In(z.location).Day()
+}
+
+// StartOfMonth returns a new Zeit at the first instant of the month (00:00:00 on day 1).
+func (z *Zeit) StartOfMonth() *Zeit {
+	t := z.instant.In(z.location)
+	return New(time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, z.location), z.location)
+}
+
+// EndOfMonth returns a new Zeit at the last second of the month (23:59:59 on last day).
+func (z *Zeit) EndOfMonth() *Zeit {
+	t := z.instant.In(z.location)
+	lastDay := time.Date(t.Year(), t.Month()+1, 0, 0, 0, 0, 0, z.location).Day()
+	return New(time.Date(t.Year(), t.Month(), lastDay, 23, 59, 59, 0, z.location), z.location)
+}
+
 // MarshalJSON implements json.Marshaler.
 func (z *Zeit) MarshalJSON() ([]byte, error) {
 	return json.Marshal(z.ToUser())
