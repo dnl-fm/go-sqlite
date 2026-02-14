@@ -1,3 +1,5 @@
+github.com/dnl-fm/zeit-go v0.1.0 h1:ZhlIKG6NoarmRLOOk5D4qqrnM4zIF1JoG5uvQc071rE=
+github.com/dnl-fm/zeit-go v0.1.0/go.mod h1:F2I32zT/cWWx4qYbNUROFRZ3uq6GH3623fpX+pCq9go=
 github.com/dustin/go-humanize v1.0.1 h1:GzkhY7T5VNhEkwH0PVJgjz+fX1rhBrR7pRT3mDkpeCY=
 github.com/dustin/go-humanize v1.0.1/go.mod h1:Mu1zIs6XwVuF/gI1OepvI0qD18qycQx+mFykh5fBlto=
 github.com/google/pprof v0.0.0-20250317173921-a4b03ec1a45e h1:ijClszYn+mADRFY17kjQEVQ1XRhq2/JR1M3sGqeJoxs=

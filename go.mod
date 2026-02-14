@@ -2,7 +2,10 @@ module github.com/dnl-fm/go-sqlite
 
 go 1.26.0
 
-require modernc.org/sqlite v1.45.0
+require (
+	github.com/dnl-fm/zeit-go v0.1.0
+	modernc.org/sqlite v1.45.0
+)
 
 require (
 	github.com/dustin/go-humanize v1.0.1 // indirect

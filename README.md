@@ -141,7 +141,7 @@ id := nanoid.NewWithLength(10)             // shorter ID
 ### 8. Timezone-Aware Dates
 
 ```go
-import "github.com/dnl-fm/go-sqlite/pkg/zeit"
+import "github.com/dnl-fm/zeit-go"
 
 // Current time in timezone
 tokyo, _ := time.LoadLocation("Asia/Tokyo")
@@ -257,7 +257,7 @@ func down20251210123456(ctx context.Context, db *sql.DB) error {
 | `pkg/migrations` | Schema versioning |
 | `pkg/id/ulid` | Time-sortable unique IDs |
 | `pkg/id/nanoid` | Compact random IDs |
-| `pkg/zeit` | Timezone handling and billing cycles |
+| [`zeit-go`](https://github.com/dnl-fm/zeit-go) | Timezone handling and billing cycles (external) |
 | `pkg/driver/modernc` | modernc.org/sqlite driver |
 
 ## Examples

@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/dnl-fm/go-sqlite/pkg/zeit"
+	"github.com/dnl-fm/zeit-go"
 )
 
 func main() {
