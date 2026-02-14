@@ -1,6 +1,6 @@
 module github.com/dnl-fm/go-sqlite
 
-go 1.25.2
+go 1.26.0
 
 require modernc.org/sqlite v1.45.0
 
