@@ -2,6 +2,7 @@ package nanoid
 
 import (
 	"encoding/json"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -95,7 +96,7 @@ func TestUniquenessAcrossLengths(t *testing.T) {
 	iterations := 1000
 
 	for _, length := range lengths {
-		t.Run("length="+string(rune(length+'0')), func(t *testing.T) {
+		t.Run("length="+strconv.Itoa(length), func(t *testing.T) {
 			seen := make(map[string]bool)
 
 			for range iterations {
@@ -182,7 +183,7 @@ func TestParseRoundTrip(t *testing.T) {
 	lengths := []int{6, 10, 21, 32}
 
 	for _, length := range lengths {
-		t.Run("length="+string(rune(length+'0')), func(t *testing.T) {
+		t.Run("length="+strconv.Itoa(length), func(t *testing.T) {
 			original := NewWithLength(length)
 			originalStr := original.String()
 
@@ -341,7 +342,7 @@ func BenchmarkNewWithLength(b *testing.B) {
 	lengths := []int{6, 10, 21, 32, 64}
 
 	for _, length := range lengths {
-		b.Run("length="+string(rune(length+'0')), func(b *testing.B) {
+		b.Run("length="+strconv.Itoa(length), func(b *testing.B) {
 			for range b.N {
 				_ = NewWithLength(length)
 			}

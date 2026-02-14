@@ -157,12 +157,20 @@ func (z *Zeit) Value() (driver.Value, error) {
 }
 
 // Scan implements sql.Scanner for database reading.
-// Reads int64 Unix timestamp, defaults to UTC.
+// Reads int64 Unix timestamp, defaults to UTC. Also normalizes float64
+// since some SQLite drivers deliver INTEGER columns as float64.
 // Use In() to switch to user timezone after scanning.
+//
+// Struct fields should use *Zeit (not Zeit) so that driver.Valuer
+// is satisfied via the pointer receiver.
 func (z *Zeit) Scan(src any) error {
 	switch v := src.(type) {
 	case int64:
 		z.instant = time.Unix(v, 0).UTC()
+		z.location = time.UTC
+		return nil
+	case float64:
+		z.instant = time.Unix(int64(v), 0).UTC()
 		z.location = time.UTC
 		return nil
 	case nil:

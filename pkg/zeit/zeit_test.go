@@ -478,6 +478,23 @@ func TestScan(t *testing.T) {
 	}
 }
 
+func TestScan_Float64(t *testing.T) {
+	timestamp := float64(1705312800)
+
+	var z Zeit
+	err := z.Scan(timestamp)
+	if err != nil {
+		t.Fatalf("Scan(float64) error: %v", err)
+	}
+
+	if z.Unix() != int64(timestamp) {
+		t.Errorf("Expected %d, got %d", int64(timestamp), z.Unix())
+	}
+	if z.Location() != time.UTC {
+		t.Error("Scan(float64) should default to UTC")
+	}
+}
+
 func TestScan_InvalidTypes(t *testing.T) {
 	var z Zeit
 
@@ -487,8 +504,8 @@ func TestScan_InvalidTypes(t *testing.T) {
 	if err := z.Scan("not a timestamp"); err == nil {
 		t.Error("Scan(string) should return error")
 	}
-	if err := z.Scan(3.14); err == nil {
-		t.Error("Scan(float) should return error")
+	if err := z.Scan(true); err == nil {
+		t.Error("Scan(bool) should return error")
 	}
 }
 

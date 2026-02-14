@@ -3,7 +3,6 @@ package database
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"sync"
 )
@@ -21,13 +20,12 @@ type Database struct {
 type Option func(*Database) error
 
 // WithDriver sets the database/sql driver name as a functional option.
-// This is a convenience shortcut for WithConfig(cfg.WithDriver(name)).
+// Empty name is ignored (keeps current driver).
 func WithDriver(name string) Option {
 	return func(d *Database) error {
-		if name == "" {
-			return errors.New("driver name cannot be empty")
+		if name != "" {
+			d.config.Driver = name
 		}
-		d.config.Driver = name
 		return nil
 	}
 }
@@ -119,12 +117,13 @@ func (d *Database) Query(ctx context.Context, query string, args ...any) (*sql.R
 	return rows, nil
 }
 
-// QueryOne executes a query that returns a single row
+// QueryOne executes a query that returns a single row.
+// Note: does not check closed state — errors surface at Scan() time.
+// This matches Go's sql.DB.QueryRow pattern where errors are deferred.
 func (d *Database) QueryOne(ctx context.Context, query string, args ...any) *sql.Row {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 
-	// Note: sql.Row.Scan will return ErrClosed if the database is closed
 	return d.db.QueryRowContext(ctx, query, args...)
 }
 

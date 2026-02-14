@@ -36,8 +36,6 @@ var (
 	ErrInvalidLength = errors.New("invalid NanoID length: must be between 6 and 255")
 	// ErrInvalidCharacter indicates the NanoID contains invalid characters
 	ErrInvalidCharacter = errors.New("invalid character in NanoID")
-	// ErrEntropyExhausted indicates the random source failed
-	ErrEntropyExhausted = errors.New("failed to read random entropy")
 )
 
 // New generates a new NanoID with default length (21 characters).
@@ -59,11 +57,7 @@ func NewWithLength(length int) NanoID {
 	randomBytes := make([]byte, length)
 	_, err := rand.Read(randomBytes)
 	if err != nil {
-		// Fallback: use a predictable but unique pattern
-		// This should be extremely rare
-		for i := range randomBytes {
-			randomBytes[i] = byte(i % len(alphabet))
-		}
+		panic("nanoid: crypto/rand failed: " + err.Error())
 	}
 
 	// Map random bytes to alphabet

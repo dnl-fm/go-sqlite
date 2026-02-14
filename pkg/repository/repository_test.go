@@ -60,6 +60,46 @@ func TestNew(t *testing.T) {
 	}
 }
 
+func TestNew_EmptyTableName(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Error("expected panic for empty table name")
+		}
+	}()
+
+	db := setupTestDB(t)
+	defer db.Close()
+
+	New[testUser, string](db, "")
+}
+
+func TestNew_ReservedWordTableName(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+
+	ctx := context.Background()
+
+	// "order" is a SQL reserved word
+	_, err := db.ExecContext(ctx, `CREATE TABLE "order" (id TEXT PRIMARY KEY, email TEXT NOT NULL, name TEXT NOT NULL)`)
+	if err != nil {
+		t.Fatalf("failed to create table: %v", err)
+	}
+
+	_, err = db.ExecContext(ctx, `INSERT INTO "order" (id, email, name) VALUES ('1', 'alice@test.com', 'Alice')`)
+	if err != nil {
+		t.Fatalf("failed to insert: %v", err)
+	}
+
+	repo := New[testUser, string](db, "order")
+	user, err := repo.FindByID(ctx, "1")
+	if err != nil {
+		t.Fatalf("FindByID with reserved word table name failed: %v", err)
+	}
+	if user.Email != "alice@test.com" {
+		t.Errorf("expected alice@test.com, got %s", user.Email)
+	}
+}
+
 func TestFindByID(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()

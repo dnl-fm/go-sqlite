@@ -36,6 +36,7 @@ func (r *Repository[T, ID]) WithTx(ctx context.Context, fn func(*Repository[T, I
 	txRepo := &Repository[T, ID]{
 		db:        tx,
 		tableName: r.tableName,
+		tableSQL:  r.tableSQL,
 	}
 
 	err = fn(txRepo)

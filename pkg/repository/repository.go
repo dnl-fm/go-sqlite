@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/dnl-fm/go-sqlite/pkg/query"
 	"github.com/dnl-fm/go-sqlite/pkg/scan"
@@ -17,8 +18,6 @@ var (
 	ErrNotFound = errors.New("repository: entity not found")
 	// ErrNilDB is returned when database is nil
 	ErrNilDB = errors.New("repository: database cannot be nil")
-	// ErrEmptyTableName is returned when table name is empty
-	ErrEmptyTableName = errors.New("repository: table name cannot be empty")
 )
 
 // DBTX is the common interface shared by *sql.DB and *sql.Tx.
@@ -43,16 +42,26 @@ type DBTX interface {
 //	user, err := repo.FindByID(ctx, "user_123")
 type Repository[T any, ID comparable] struct {
 	db        DBTX
-	tableName string
+	tableName string // original name for public API
+	tableSQL  string // quoted name for SQL statements
 }
 
 // New creates a new Repository instance.
 // T is the entity type (must have `db` struct tags).
 // ID is the primary key type.
+// The table name is quoted with double quotes to safely handle reserved words.
 func New[T any, ID comparable](db DBTX, tableName string) *Repository[T, ID] {
+	if tableName == "" {
+		panic("repository: table name cannot be empty")
+	}
+
+	// Escape embedded double quotes per SQL standard
+	escaped := strings.ReplaceAll(tableName, `"`, `""`)
+
 	return &Repository[T, ID]{
 		db:        db,
 		tableName: tableName,
+		tableSQL:  `"` + escaped + `"`,
 	}
 }
 
@@ -76,7 +85,7 @@ func (r *Repository[T, ID]) FindByID(ctx context.Context, id ID) (T, error) {
 	}
 
 	q, err := query.Build(
-		fmt.Sprintf("SELECT * FROM %s WHERE id = :id LIMIT 1", r.tableName),
+		fmt.Sprintf("SELECT * FROM %s WHERE id = :id LIMIT 1", r.tableSQL),
 		map[string]any{"id": id},
 	)
 	if err != nil {
@@ -107,7 +116,7 @@ func (r *Repository[T, ID]) FindAll(ctx context.Context) ([]T, error) {
 		return nil, ErrNilDB
 	}
 
-	q, err := query.New("SELECT * FROM " + r.tableName)
+	q, err := query.New("SELECT * FROM " + r.tableSQL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build query: %w", err)
 	}
@@ -164,7 +173,7 @@ func (r *Repository[T, ID]) Count(ctx context.Context) (int64, error) {
 		return 0, ErrNilDB
 	}
 
-	sqlStr := "SELECT COUNT(*) FROM " + r.tableName
+	sqlStr := "SELECT COUNT(*) FROM " + r.tableSQL
 	var count int64
 	err := r.db.QueryRowContext(ctx, sqlStr).Scan(&count)
 	if err != nil {
@@ -181,7 +190,7 @@ func (r *Repository[T, ID]) Exists(ctx context.Context, id ID) (bool, error) {
 	}
 
 	q, err := query.Build(
-		fmt.Sprintf("SELECT 1 FROM %s WHERE id = :id LIMIT 1", r.tableName),
+		fmt.Sprintf("SELECT 1 FROM %s WHERE id = :id LIMIT 1", r.tableSQL),
 		map[string]any{"id": id},
 	)
 	if err != nil {
@@ -200,8 +209,8 @@ func (r *Repository[T, ID]) Exists(ctx context.Context, id ID) (bool, error) {
 	return true, nil
 }
 
-// Insert executes an INSERT query.
-func (r *Repository[T, ID]) Insert(ctx context.Context, q *query.Query) (sql.Result, error) {
+// exec runs a query that modifies data (INSERT, UPDATE, DELETE).
+func (r *Repository[T, ID]) exec(ctx context.Context, q *query.Query, op string) (sql.Result, error) {
 	if r.db == nil {
 		return nil, ErrNilDB
 	}
@@ -211,44 +220,25 @@ func (r *Repository[T, ID]) Insert(ctx context.Context, q *query.Query) (sql.Res
 
 	result, err := r.db.ExecContext(ctx, q.SQL(), q.Args()...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to insert: %w", err)
+		return nil, fmt.Errorf("failed to %s: %w", op, err)
 	}
 
 	return result, nil
+}
+
+// Insert executes an INSERT query.
+func (r *Repository[T, ID]) Insert(ctx context.Context, q *query.Query) (sql.Result, error) {
+	return r.exec(ctx, q, "insert")
 }
 
 // Update executes an UPDATE query.
 func (r *Repository[T, ID]) Update(ctx context.Context, q *query.Query) (sql.Result, error) {
-	if r.db == nil {
-		return nil, ErrNilDB
-	}
-	if q == nil {
-		return nil, errors.New("query cannot be nil")
-	}
-
-	result, err := r.db.ExecContext(ctx, q.SQL(), q.Args()...)
-	if err != nil {
-		return nil, fmt.Errorf("failed to update: %w", err)
-	}
-
-	return result, nil
+	return r.exec(ctx, q, "update")
 }
 
 // Delete executes a DELETE query.
 func (r *Repository[T, ID]) Delete(ctx context.Context, q *query.Query) (sql.Result, error) {
-	if r.db == nil {
-		return nil, ErrNilDB
-	}
-	if q == nil {
-		return nil, errors.New("query cannot be nil")
-	}
-
-	result, err := r.db.ExecContext(ctx, q.SQL(), q.Args()...)
-	if err != nil {
-		return nil, fmt.Errorf("failed to delete: %w", err)
-	}
-
-	return result, nil
+	return r.exec(ctx, q, "delete")
 }
 
 // DeleteByID deletes an entity by its primary key.
@@ -259,7 +249,7 @@ func (r *Repository[T, ID]) DeleteByID(ctx context.Context, id ID) error {
 	}
 
 	q, err := query.Build(
-		fmt.Sprintf("DELETE FROM %s WHERE id = :id", r.tableName),
+		fmt.Sprintf("DELETE FROM %s WHERE id = :id", r.tableSQL),
 		map[string]any{"id": id},
 	)
 	if err != nil {

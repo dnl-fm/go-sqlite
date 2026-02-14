@@ -151,6 +151,14 @@ z := zeit.Now(tokyo)
 dbValue := z.ToDatabase()  // int64
 restored := zeit.FromDatabase(dbValue, tokyo)
 
+// Automatic via sql.Scanner/driver.Valuer (use *Zeit in structs)
+type Order struct {
+    ID        string     `db:"id"`
+    CreatedAt *zeit.Zeit `db:"created_at"`  // scans as UTC int64
+}
+order, _ := repo.FindByID(ctx, "order_123")
+order.CreatedAt.In(appTZ).ToUser()  // "2024-01-15T11:30:00+01:00"
+
 // Date arithmetic
 tomorrow := z.AddDays(1)
 nextBusinessDay := z.AddBusinessDays(1)  // skips weekends
@@ -169,7 +177,9 @@ cycles := z.Cycles(12, zeit.Monthly)
 | `synchronous` | `NORMAL` | Balanced durability/speed |
 | `foreign_keys` | `ON` | Enforce referential integrity |
 | `busy_timeout` | `5000` | Wait 5s before locked error |
+| `temp_store` | `MEMORY` | Temp tables in RAM |
 | `cache_size` | `-20000` | 20MB page cache |
+| `mmap_size` | `33554432` | 32MB memory-mapped I/O |
 
 ```go
 // Default config (recommended)

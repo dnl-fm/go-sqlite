@@ -29,8 +29,6 @@ var (
 	ErrInvalidLength = errors.New("invalid ULID length")
 	// ErrInvalidCharacter indicates the ULID contains invalid base32 characters
 	ErrInvalidCharacter = errors.New("invalid character in ULID")
-	// ErrEntropyExhausted indicates the random source failed to provide entropy
-	ErrEntropyExhausted = errors.New("failed to read random entropy")
 )
 
 // New generates a new ULID with optional prefix.
@@ -49,11 +47,7 @@ func New(prefix string) ULID {
 	randomBytes := make([]byte, 10)
 	_, err := rand.Read(randomBytes)
 	if err != nil {
-		// Fallback to timestamp-based pseudo-randomness if crypto/rand fails
-		// This should be extremely rare
-		for i := range randomBytes {
-			randomBytes[i] = byte(timestamp ^ int64(i))
-		}
+		panic("ulid: crypto/rand failed: " + err.Error())
 	}
 
 	// Encode random bytes into last 16 positions

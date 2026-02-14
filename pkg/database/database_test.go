@@ -81,11 +81,16 @@ func TestWithDriver(t *testing.T) {
 		}
 	})
 
-	t.Run("returns error for empty driver name", func(t *testing.T) {
+	t.Run("empty driver name keeps default", func(t *testing.T) {
 		ctx := context.Background()
-		_, err := Open(ctx, ":memory:", WithDriver(""))
-		if err == nil {
-			t.Error("expected error for empty driver name")
+		db, err := Open(ctx, ":memory:", WithDriver(""))
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		defer db.Close()
+
+		if db.Config().Driver != DefaultDriver {
+			t.Errorf("expected default driver %s, got %s", DefaultDriver, db.Config().Driver)
 		}
 	})
 

@@ -25,8 +25,10 @@ func DefaultConfig() *Config {
 			"journal_mode": "WAL",
 			"synchronous":  "NORMAL",
 			"foreign_keys": "ON",
-			"cache_size":   "-20000", // 20MB
 			"busy_timeout": "5000",
+			"temp_store":   "MEMORY",
+			"cache_size":   "-20000",    // 20MB
+			"mmap_size":    "33554432",  // 32MB
 		},
 	}
 }
@@ -57,20 +59,21 @@ func ProductionConfig() *Config {
 		Pragmas: map[string]string{
 			"journal_mode": "WAL",
 			"synchronous":  "NORMAL",
-			"cache_size":   "-64000", // 64MB
-			"busy_timeout": "10000",
 			"foreign_keys": "ON",
+			"busy_timeout": "10000",
+			"temp_store":   "MEMORY",
+			"cache_size":   "-64000",     // 64MB
+			"mmap_size":    "67108864",   // 64MB
 		},
 	}
 }
 
 // WithDriver sets the database/sql driver name.
-// Panics if name is empty to catch configuration errors early.
+// Returns the config unchanged if name is empty.
 func (c *Config) WithDriver(name string) *Config {
-	if name == "" {
-		panic("database: driver name cannot be empty")
+	if name != "" {
+		c.Driver = name
 	}
-	c.Driver = name
 	return c
 }
 
