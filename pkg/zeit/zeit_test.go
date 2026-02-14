@@ -406,6 +406,127 @@ func TestJSON_RoundTrip(t *testing.T) {
 	}
 }
 
+func TestIn(t *testing.T) {
+	base := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
+	z := New(base, time.UTC)
+	ny, _ := time.LoadLocation("America/New_York")
+
+	switched := z.In(ny)
+
+	// Same instant
+	if !z.Equal(switched) {
+		t.Error("In() should preserve the instant")
+	}
+
+	// Different timezone
+	if switched.Location() != ny {
+		t.Errorf("Expected NY location, got %v", switched.Location())
+	}
+
+	// Original unchanged
+	if z.Location() != time.UTC {
+		t.Error("In() modified original Zeit")
+	}
+
+	// Display changes
+	if switched.ToUser() != "2024-01-15T05:00:00-05:00" {
+		t.Errorf("Expected NY time, got %s", switched.ToUser())
+	}
+}
+
+func TestIn_NilLocation(t *testing.T) {
+	z := New(time.Now(), time.UTC)
+	switched := z.In(nil)
+
+	if switched.Location() != time.UTC {
+		t.Error("In(nil) should default to UTC")
+	}
+}
+
+func TestValue(t *testing.T) {
+	timestamp := int64(1705318200)
+	z := FromDatabase(timestamp, time.UTC)
+
+	val, err := z.Value()
+	if err != nil {
+		t.Fatalf("Value() error: %v", err)
+	}
+
+	got, ok := val.(int64)
+	if !ok {
+		t.Fatalf("Value() returned %T, want int64", val)
+	}
+	if got != timestamp {
+		t.Errorf("Expected %d, got %d", timestamp, got)
+	}
+}
+
+func TestScan(t *testing.T) {
+	timestamp := int64(1705318200)
+
+	var z Zeit
+	err := z.Scan(timestamp)
+	if err != nil {
+		t.Fatalf("Scan() error: %v", err)
+	}
+
+	if z.Unix() != timestamp {
+		t.Errorf("Expected %d, got %d", timestamp, z.Unix())
+	}
+	if z.Location() != time.UTC {
+		t.Error("Scan() should default to UTC")
+	}
+}
+
+func TestScan_InvalidTypes(t *testing.T) {
+	var z Zeit
+
+	if err := z.Scan(nil); err == nil {
+		t.Error("Scan(nil) should return error")
+	}
+	if err := z.Scan("not a timestamp"); err == nil {
+		t.Error("Scan(string) should return error")
+	}
+	if err := z.Scan(3.14); err == nil {
+		t.Error("Scan(float) should return error")
+	}
+}
+
+func TestScanValueRoundTrip(t *testing.T) {
+	original := Now(time.UTC)
+
+	val, err := original.Value()
+	if err != nil {
+		t.Fatalf("Value() error: %v", err)
+	}
+
+	var restored Zeit
+	err = restored.Scan(val)
+	if err != nil {
+		t.Fatalf("Scan() error: %v", err)
+	}
+
+	if original.Unix() != restored.Unix() {
+		t.Errorf("Round trip failed: %d != %d", original.Unix(), restored.Unix())
+	}
+}
+
+func TestScanThenIn(t *testing.T) {
+	// Simulates: DB scan (UTC) -> switch to user TZ for display
+	// Use a known instant: 2024-01-15 10:00:00 UTC
+	timestamp := int64(1705312800)
+	berlin, _ := time.LoadLocation("Europe/Berlin")
+
+	var z Zeit
+	_ = z.Scan(timestamp)
+
+	userView := z.In(berlin)
+	expected := "2024-01-15T11:00:00+01:00"
+	if userView.ToUser() != expected {
+		t.Errorf("Expected %s, got %s", expected, userView.ToUser())
+	}
+}
+
 func TestTimezonePreservation(t *testing.T) {
 	ny, _ := time.LoadLocation("America/New_York")
 	base := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)

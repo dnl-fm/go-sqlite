@@ -1,7 +1,9 @@
 package zeit
 
 import (
+	"database/sql/driver"
 	"encoding/json"
+	"fmt"
 	"time"
 )
 
@@ -134,6 +136,40 @@ func (z *Zeit) After(other *Zeit) bool {
 // Equal reports whether z and other represent the same instant in time.
 func (z *Zeit) Equal(other *Zeit) bool {
 	return z.instant.Equal(other.instant)
+}
+
+// In returns a new Zeit with the same instant but a different timezone.
+// Useful for switching from UTC (database) to user display timezone.
+func (z *Zeit) In(loc *time.Location) *Zeit {
+	if loc == nil {
+		loc = time.UTC
+	}
+	return &Zeit{
+		instant:  z.instant,
+		location: loc,
+	}
+}
+
+// Value implements driver.Valuer for database storage.
+// Stores as int64 Unix timestamp (UTC).
+func (z *Zeit) Value() (driver.Value, error) {
+	return z.instant.Unix(), nil
+}
+
+// Scan implements sql.Scanner for database reading.
+// Reads int64 Unix timestamp, defaults to UTC.
+// Use In() to switch to user timezone after scanning.
+func (z *Zeit) Scan(src any) error {
+	switch v := src.(type) {
+	case int64:
+		z.instant = time.Unix(v, 0).UTC()
+		z.location = time.UTC
+		return nil
+	case nil:
+		return fmt.Errorf("zeit: cannot scan nil value")
+	default:
+		return fmt.Errorf("zeit: cannot scan %T into Zeit", src)
+	}
 }
 
 // MarshalJSON implements json.Marshaler.
