@@ -1,6 +1,10 @@
 package database
 
-import "time"
+import (
+	"time"
+
+	"github.com/dnl-fm/go-sqlite/pkg/driver/turso"
+)
 
 // DefaultDriver is the driver used when none is specified.
 const DefaultDriver = "sqlite"
@@ -27,8 +31,8 @@ func DefaultConfig() *Config {
 			"foreign_keys": "ON",
 			"busy_timeout": "5000",
 			"temp_store":   "MEMORY",
-			"cache_size":   "-20000",    // 20MB
-			"mmap_size":    "33554432",  // 32MB
+			"cache_size":   "-20000",   // 20MB
+			"mmap_size":    "33554432", // 32MB
 		},
 	}
 }
@@ -62,10 +66,26 @@ func ProductionConfig() *Config {
 			"foreign_keys": "ON",
 			"busy_timeout": "10000",
 			"temp_store":   "MEMORY",
-			"cache_size":   "-64000",     // 64MB
-			"mmap_size":    "67108864",   // 64MB
+			"cache_size":   "-64000",   // 64MB
+			"mmap_size":    "67108864", // 64MB
 		},
 	}
+}
+
+// TursoMVCCConfig returns a Turso configuration for concurrent write workloads.
+//
+// MVCC mode allows BEGIN CONCURRENT transactions to overlap across connections
+// and processes writing to the same database file.
+func TursoMVCCConfig() *Config {
+	return ProductionConfig().
+		WithDriver(turso.DriverName).
+		WithPragma("journal_mode", "'mvcc'").
+		WithPragma("busy_timeout", "1000")
+}
+
+// WithTursoMVCC configures the database to use Turso with MVCC journal mode.
+func WithTursoMVCC() Option {
+	return WithConfig(TursoMVCCConfig())
 }
 
 // WithDriver sets the database/sql driver name.

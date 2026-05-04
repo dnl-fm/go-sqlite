@@ -1,21 +1,43 @@
-.PHONY: build test test-cover test-verbose clean migrate-build
+.PHONY: build test lint backpressure check check-dev file-size test-cover test-verbose clean migrate-build
 
 # Build migrate CLI
 build:
 	@echo "Building migrate CLI..."
-	@go build -o bin/migrate ./cmd/migrate
+	@GOWORK=off go build -o bin/migrate ./cmd/migrate
 
 # Run all tests
 test:
-	@go test ./pkg/...
+	@GOWORK=off go test ./pkg/...
+
+# Run deterministic lint checks
+lint:
+	@GOWORK=off go vet ./...
+	@GOWORK=off golangci-lint run --new --disable=intrange --disable=ireturn --disable=noinlineerr --disable=unqueryvet
+
+# Run local quality backpressure
+backpressure: lint file-size test build
+
+# Run full repository policy and local backpressure
+check:
+	@rabbit check
+	@$(MAKE) backpressure
+
+# Run development-phase checks. Rabbit still runs, but selected rules are
+# downgraded to warnings so policy churn stays visible without blocking flow.
+check-dev:
+	@rabbit check --dev --dev-allow "$(RABBIT_DEV_ALLOW)"
+	@$(MAKE) backpressure
+
+file-size:
+	@./scripts/check-file-size.sh
 
 # Run tests with coverage
 test-cover:
-	@go test ./pkg/... -cover
+	@GOWORK=off go test ./pkg/... -cover
 
 # Run tests with verbose output
 test-verbose:
-	@go test ./pkg/... -v
+	@GOWORK=off go test ./pkg/... -v
 
 # Clean build artifacts
 clean:

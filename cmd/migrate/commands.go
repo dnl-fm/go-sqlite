@@ -11,8 +11,8 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/dnl-fm/go-sqlite/pkg/migrations"
 	_ "github.com/dnl-fm/go-sqlite/pkg/driver/modernc"
+	"github.com/dnl-fm/go-sqlite/pkg/migrations"
 )
 
 // getDatabaseURL returns the database URL from environment
@@ -177,10 +177,10 @@ func getModuleName() (string, error) {
 		return "", fmt.Errorf("failed to read go.mod: %w", err)
 	}
 
-	for _, line := range strings.Split(string(data), "\n") {
+	for line := range strings.SplitSeq(string(data), "\n") {
 		line = strings.TrimSpace(line)
-		if strings.HasPrefix(line, "module ") {
-			return strings.TrimPrefix(line, "module "), nil
+		if module, ok := strings.CutPrefix(line, "module "); ok {
+			return module, nil
 		}
 	}
 

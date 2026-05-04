@@ -13,7 +13,7 @@ import (
 // ULID represents a 26-character universally unique lexicographically sortable identifier.
 // Format: 10 chars timestamp (48-bit) + 16 chars randomness (80-bit) in Crockford base32.
 //
-//nolint:recvcheck // value receivers for getters/marshalers, pointer for UnmarshalJSON
+//nolint:recvcheck // value receivers for getters/marshalers, pointer for UnmarshalJSON. RBT-005
 type ULID struct {
 	prefix string
 	value  [26]byte
@@ -140,7 +140,7 @@ func (u *ULID) UnmarshalJSON(data []byte) error {
 func encodeTimestamp(dst *[26]byte, timestamp int64) {
 	// 48-bit timestamp encoded in base32 = 10 characters
 	// timestamp is 64-bit, but we only use lower 48 bits (good until year 10889)
-	ts := uint64(timestamp) & 0xFFFFFFFFFFFF //nolint:gosec // intentional 48-bit mask, not overflow
+	ts := uint64(timestamp) & 0xFFFFFFFFFFFF //nolint:gosec // intentional 48-bit mask, not overflow. RBT-005
 
 	// Encode from right to left
 	for i := 9; i >= 0; i-- {
@@ -179,12 +179,13 @@ func encodeRandom(dst *[26]byte, random []byte) {
 // decodeTimestamp decodes the first 10 characters back into a timestamp.
 func decodeTimestamp(value [26]byte) int64 {
 	var ts uint64
+	timestamp := value[:10]
 
-	for i := range 10 {
-		ts = (ts << 5) | uint64(charToValue(value[i]))
+	for _, c := range timestamp {
+		ts = (ts << 5) | uint64(charToValue(c))
 	}
 
-	return int64(ts) //nolint:gosec // ULID timestamps fit in int64
+	return int64(ts) //nolint:gosec // ULID timestamps fit in int64. RBT-005
 }
 
 // charToValue converts a base32 character to its numeric value (0-31).

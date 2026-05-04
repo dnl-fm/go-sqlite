@@ -34,5 +34,7 @@ Thumbs.db
 # Build output
 /bin/
 /dist/
+.runtime/
 tmp/coverage.html
+tmp/
 file::memory:*
