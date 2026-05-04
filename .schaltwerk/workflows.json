@@ -1,0 +1,39 @@
+[
+  {
+    "name": "go-backpressure",
+    "triggers": [
+      "manual",
+      "pull_request",
+      "push:main"
+    ],
+    "image": "schaltwerk-go:3",
+    "commands": [
+      "go version",
+      "make backpressure"
+    ],
+    "artifacts": [
+      "dist/**",
+      "bin/**",
+      "build/**",
+      "*.tar.gz",
+      "*.zip"
+    ]
+  },
+  {
+    "name": "mirror-github",
+    "triggers": [
+      "push",
+      "manual"
+    ],
+    "image": "schaltwerk-go:3",
+    "requires": [
+      "go-backpressure"
+    ],
+    "steps": [
+      {
+        "name": "sync",
+        "run": "if [ -z \"${SCHALTWERK_AUTH_TOKEN:-}\" ]; then\n  echo \"SCHALTWERK_AUTH_TOKEN is required to fetch from Schaltwerk\"\n  exit 1\nfi\nif [ -z \"${GITHUB_TOKEN:-}\" ]; then\n  echo \"GITHUB_TOKEN is required to push to GitHub\"\n  exit 1\nfi\n\ngit config --global credential.helper store\nprintf 'https://x:%s@schaltwerk.dev\\n' \"$SCHALTWERK_AUTH_TOKEN\" > \"$HOME/.git-credentials\"\nprintf 'https://x:%s@github.com\\n' \"$GITHUB_TOKEN\" >> \"$HOME/.git-credentials\"\ngit remote set-url origin \"https://schaltwerk.dev/git/go-sqlite.git\"\ngit remote remove github 2>/dev/null || true\ngit remote add github \"https://github.com/dnl-fm/go-sqlite.git\"\n\ngit fetch origin '+refs/heads/*:refs/remotes/origin/*' '+refs/tags/*:refs/tags/*'\ngit for-each-ref --format='%(refname:strip=3)' refs/remotes/origin | while read -r branch; do\n  if [ \"$branch\" = \"HEAD\" ]; then\n    continue\n  fi\n  git push github \"+refs/remotes/origin/$branch:refs/heads/$branch\"\ndone\ngit push --prune github '+refs/tags/*:refs/tags/*'"
+      }
+    ]
+  }
+]
