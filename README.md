@@ -91,8 +91,10 @@ users, err := repo.FindByQuery(ctx, q)
 
 ### 5. Transactions
 
+Use `WithConcurrentTx` for Turso MVCC write transactions. It runs `BEGIN CONCURRENT` on a reserved connection so overlapping writes from different handles or scripts can proceed.
+
 ```go
-err := repo.WithTx(ctx, func(tx *repository.Repository[User, string]) error {
+err := repo.WithConcurrentTx(ctx, func(tx *repository.Repository[User, string]) error {
     q1, _ := query.Build(
         "INSERT INTO users (id, email, name) VALUES (:id, :email, :name)",
         map[string]any{"id": "1", "email": "alice@example.com", "name": "Alice"},
@@ -104,6 +106,8 @@ err := repo.WithTx(ctx, func(tx *repository.Repository[User, string]) error {
     return nil  // triggers commit
 })
 ```
+
+`WithTx` still exists for portable `database/sql` transactions, but it is deprecated for Turso MVCC write concurrency because it starts a regular `BEGIN`.
 
 ### 6. Migrations
 
@@ -195,6 +199,23 @@ cfg := database.DefaultConfig().WithPragma("cache_size", "-64000")
 db, _ := database.Open(ctx, "app.db", database.WithConfig(cfg))
 ```
 
+### Turso Driver
+
+The default driver remains `modernc.org/sqlite`. Turso MVCC can be enabled explicitly when you want the Rust-based engine and concurrent writes across connections or scripts:
+
+```go
+db, err := database.Open(ctx, "app.db", database.WithTursoMVCC())
+```
+
+For lower-level code, use `database.ConcurrentTx` or `database.ConcurrentTxRetry`:
+
+```go
+err := database.ConcurrentTxRetry(ctx, db.DB(), 5, func(tx database.ConnTx) error {
+    _, err := tx.ExecContext(ctx, "INSERT INTO hits (val) VALUES (?)", 1)
+    return err
+})
+```
+
 ## Migrations CLI
 
 ```bash
@@ -259,6 +280,7 @@ func down20251210123456(ctx context.Context, db *sql.DB) error {
 | `pkg/id/nanoid` | Compact random IDs |
 | [`zeit-go`](https://github.com/dnl-fm/zeit-go) | Timezone handling and billing cycles (external) |
 | `pkg/driver/modernc` | modernc.org/sqlite driver |
+| `pkg/driver/turso` | Turso database/sql driver with MVCC support |
 
 ## Examples
 
