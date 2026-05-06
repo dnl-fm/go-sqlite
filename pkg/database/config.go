@@ -12,6 +12,8 @@ const DefaultDriver = "sqlite"
 // Config holds database connection pool and pragma settings
 type Config struct {
 	Pragmas         map[string]string
+	PragmaOrder     []string
+	StrictPragmas   bool
 	Driver          string
 	ConnMaxLifetime time.Duration
 	MaxOpenConns    int
@@ -25,6 +27,15 @@ func DefaultConfig() *Config {
 		MaxOpenConns:    25,
 		MaxIdleConns:    5,
 		ConnMaxLifetime: 5 * time.Minute,
+		PragmaOrder: []string{
+			"journal_mode",
+			"foreign_keys",
+			"synchronous",
+			"busy_timeout",
+			"temp_store",
+			"cache_size",
+			"mmap_size",
+		},
 		Pragmas: map[string]string{
 			"journal_mode": "WAL",
 			"synchronous":  "NORMAL",
@@ -44,6 +55,12 @@ func DevelopmentConfig() *Config {
 		MaxOpenConns:    10,
 		MaxIdleConns:    2,
 		ConnMaxLifetime: 1 * time.Minute,
+		PragmaOrder: []string{
+			"journal_mode",
+			"synchronous",
+			"cache_size",
+			"busy_timeout",
+		},
 		Pragmas: map[string]string{
 			"journal_mode": "DELETE",
 			"synchronous":  "FULL",
@@ -60,6 +77,15 @@ func ProductionConfig() *Config {
 		MaxOpenConns:    100,
 		MaxIdleConns:    10,
 		ConnMaxLifetime: 15 * time.Minute,
+		PragmaOrder: []string{
+			"journal_mode",
+			"foreign_keys",
+			"synchronous",
+			"busy_timeout",
+			"temp_store",
+			"cache_size",
+			"mmap_size",
+		},
 		Pragmas: map[string]string{
 			"journal_mode": "WAL",
 			"synchronous":  "NORMAL",
@@ -120,6 +146,21 @@ func (c *Config) WithPragma(key, value string) *Config {
 	if c.Pragmas == nil {
 		c.Pragmas = make(map[string]string)
 	}
+	if _, exists := c.Pragmas[key]; !exists {
+		c.PragmaOrder = append(c.PragmaOrder, key)
+	}
 	c.Pragmas[key] = value
+	return c
+}
+
+// WithPragmaOrder sets the preferred pragma application order.
+func (c *Config) WithPragmaOrder(keys ...string) *Config {
+	c.PragmaOrder = append([]string(nil), keys...)
+	return c
+}
+
+// WithStrictPragmas makes Open fail if any configured PRAGMA cannot be applied.
+func (c *Config) WithStrictPragmas(strict bool) *Config {
+	c.StrictPragmas = strict
 	return c
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"sort"
 	"sync"
 )
 
@@ -74,8 +75,10 @@ func Open(ctx context.Context, path string, opts ...Option) (*Database, error) {
 	db.db.SetMaxIdleConns(db.config.MaxIdleConns)
 	db.db.SetConnMaxLifetime(db.config.ConnMaxLifetime)
 
-	// Apply pragmas
-	db.applyPragmas(ctx)
+	if err := db.applyPragmas(ctx); err != nil {
+		sqlDB.Close()
+		return nil, err
+	}
 
 	// Verify connection
 	err = db.db.PingContext(ctx)
@@ -88,16 +91,45 @@ func Open(ctx context.Context, path string, opts ...Option) (*Database, error) {
 }
 
 // applyPragmas applies configured pragma settings
-func (d *Database) applyPragmas(ctx context.Context) {
-	for key, value := range d.config.Pragmas {
-		query := fmt.Sprintf("PRAGMA %s = %s", key, value)
-		_, err := d.db.ExecContext(ctx, query)
-		if err != nil {
-			// Ignore pragma errors for compatibility (some pragmas may not be supported)
-			// This is especially true for in-memory databases or different SQLite versions
+func (d *Database) applyPragmas(ctx context.Context) error {
+	applied := make(map[string]bool, len(d.config.Pragmas))
+	for _, key := range d.config.PragmaOrder {
+		value, ok := d.config.Pragmas[key]
+		if !ok {
 			continue
 		}
+		if err := d.applyPragma(ctx, key, value); err != nil {
+			return err
+		}
+		applied[key] = true
 	}
+
+	var remaining []string
+	for key := range d.config.Pragmas {
+		if !applied[key] {
+			remaining = append(remaining, key)
+		}
+	}
+	sort.Strings(remaining)
+	for _, key := range remaining {
+		if err := d.applyPragma(ctx, key, d.config.Pragmas[key]); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (d *Database) applyPragma(ctx context.Context, key, value string) error {
+	query := fmt.Sprintf("PRAGMA %s = %s", key, value)
+	_, err := d.db.ExecContext(ctx, query)
+	if err != nil {
+		if d.config.StrictPragmas {
+			return fmt.Errorf("set pragma %q: %w", query, err)
+		}
+		// Ignore pragma errors for compatibility. Some SQLite drivers or in-memory
+		// databases do not support every pragma.
+	}
+	return nil
 }
 
 // Query executes a query that returns rows

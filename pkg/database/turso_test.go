@@ -138,6 +138,40 @@ func TestTursoMVCCBeginConcurrentDisjointWrites(t *testing.T) {
 	}
 }
 
+func TestTursoMVCCManualBeginConcurrentTx(t *testing.T) {
+	ctx := context.Background()
+	db, err := Open(ctx, t.TempDir()+"/manual-concurrent.db", WithTursoMVCC())
+	if err != nil {
+		t.Fatalf("failed to open turso database: %v", err)
+	}
+	defer db.Close()
+
+	if _, err := db.Exec(ctx, "CREATE TABLE hits (id INTEGER PRIMARY KEY, worker INTEGER NOT NULL UNIQUE)"); err != nil {
+		t.Fatalf("failed to create table: %v", err)
+	}
+
+	tx, err := db.BeginConcurrentTx(ctx)
+	if err != nil {
+		t.Fatalf("failed to begin concurrent tx: %v", err)
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	if _, err := tx.ExecContext(ctx, "INSERT INTO hits (worker) VALUES (?)", 1); err != nil {
+		t.Fatalf("failed to insert row: %v", err)
+	}
+	if err := tx.Commit(); err != nil {
+		t.Fatalf("failed to commit concurrent tx: %v", err)
+	}
+
+	var count int
+	if err := db.QueryOne(ctx, "SELECT COUNT(*) FROM hits").Scan(&count); err != nil {
+		t.Fatalf("failed to count rows: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("expected 1 row, got %d", count)
+	}
+}
+
 func TestTursoMVCCConcurrentWritesAcrossDatabaseHandles(t *testing.T) {
 	ctx := context.Background()
 	path := t.TempDir() + "/shared.db"
