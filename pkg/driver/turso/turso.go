@@ -15,6 +15,9 @@
 // and start write transactions with:
 //
 //	BEGIN CONCURRENT
+//
+// Turso does not support WITHOUT ROWID tables. Databases opened with this
+// driver must use normal rowid tables.
 package turso
 
 import _ "turso.tech/database/tursogo" // registers "turso" driver with database/sql

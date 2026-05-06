@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -35,6 +36,38 @@ func TestTursoDriverOpen(t *testing.T) {
 	}
 	if name != "Ada" {
 		t.Fatalf("expected Ada, got %q", name)
+	}
+}
+
+func TestTursoRejectsWithoutRowidTables(t *testing.T) {
+	ctx := context.Background()
+	path := t.TempDir() + "/without-rowid.db"
+	setup, err := Open(ctx, path)
+	if err != nil {
+		t.Fatalf("failed to open setup database: %v", err)
+	}
+	if _, err := setup.Exec(ctx, "CREATE TABLE lookup (id TEXT PRIMARY KEY, value TEXT NOT NULL) WITHOUT ROWID"); err != nil {
+		t.Fatalf("failed to create WITHOUT ROWID table with modernc: %v", err)
+	}
+	if err := setup.Close(); err != nil {
+		t.Fatalf("failed to close setup database: %v", err)
+	}
+
+	db, err := Open(ctx, path, WithTursoMVCC())
+	if err != nil {
+		if !strings.Contains(err.Error(), "WITHOUT ROWID") && !strings.Contains(err.Error(), "Missing automatic index entry") {
+			t.Fatalf("expected WITHOUT ROWID-related open error, got %v", err)
+		}
+		return
+	}
+	defer db.Close()
+
+	_, err = db.Exec(ctx, "INSERT INTO lookup (id, value) VALUES (?, ?)", "a", "A")
+	if err == nil {
+		t.Fatal("expected Turso MVCC write to fail against WITHOUT ROWID table")
+	}
+	if !strings.Contains(err.Error(), "WITHOUT ROWID") {
+		t.Fatalf("expected WITHOUT ROWID-related write error, got %v", err)
 	}
 }
 

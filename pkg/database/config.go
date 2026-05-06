@@ -102,6 +102,9 @@ func ProductionConfig() *Config {
 //
 // MVCC mode allows BEGIN CONCURRENT transactions to overlap across connections
 // and processes writing to the same database file.
+//
+// Turso does not support WITHOUT ROWID tables. Schemas used with this config
+// must use normal rowid tables.
 func TursoMVCCConfig() *Config {
 	return ProductionConfig().
 		WithDriver(turso.DriverName).
