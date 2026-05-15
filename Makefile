@@ -1,4 +1,4 @@
-.PHONY: build test lint backpressure check check-dev file-size test-cover test-verbose clean migrate-build
+.PHONY: build test lab-test lint backpressure check check-dev file-size test-cover test-verbose clean migrate-build
 
 # Build migrate CLI
 build:
@@ -8,6 +8,10 @@ build:
 # Run all tests
 test:
 	@GOWORK=off go test ./pkg/...
+
+# Run exploratory labs
+lab-test:
+	@cd lab/turso-v060 && GOWORK=off go test ./...
 
 # Run deterministic lint checks
 lint:

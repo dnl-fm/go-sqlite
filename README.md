@@ -207,7 +207,7 @@ The default driver remains `modernc.org/sqlite`. Turso MVCC can be enabled expli
 db, err := database.Open(ctx, "app.db", database.WithTursoMVCC())
 ```
 
-Turso does not support `WITHOUT ROWID` tables. Do not use `WITHOUT ROWID` in migrations for databases opened with `WithTursoMVCC()`, and rebuild existing plain SQLite databases into normal rowid tables before switching them to Turso MVCC.
+Turso 0.6.0 has experimental plain-engine `WITHOUT ROWID` support behind `?experimental=without_rowid`, but MVCC still rejects writes to those tables. Do not use `WITHOUT ROWID` in migrations for databases opened with `WithTursoMVCC()`, and rebuild existing plain SQLite databases into normal rowid tables before switching them to Turso MVCC. The current probes live in `lab/turso-v060`.
 
 For lower-level code, use `database.ConcurrentTx` or `database.ConcurrentTxRetry`:
 

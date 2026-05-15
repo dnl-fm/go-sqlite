@@ -16,8 +16,8 @@
 //
 //	BEGIN CONCURRENT
 //
-// Turso does not support WITHOUT ROWID tables. Databases opened with this
-// driver must use normal rowid tables.
+// Turso MVCC does not support writes to WITHOUT ROWID tables. Databases opened
+// in MVCC mode must use normal rowid tables.
 package turso
 
 import _ "turso.tech/database/tursogo" // registers "turso" driver with database/sql
