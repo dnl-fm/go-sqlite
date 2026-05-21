@@ -64,7 +64,7 @@ func TestOpen(t *testing.T) {
 }
 
 func TestWithDriver(t *testing.T) {
-	t.Run("sets driver name", func(t *testing.T) {
+	t.Run("keeps Turso MVCC driver", func(t *testing.T) {
 		ctx := context.Background()
 		db, err := Open(ctx, ":memory:", WithDriver("sqlite"))
 		if err != nil {
@@ -72,8 +72,8 @@ func TestWithDriver(t *testing.T) {
 		}
 		defer db.Close()
 
-		if db.Config().Driver != "sqlite" {
-			t.Errorf("expected driver 'sqlite', got %s", db.Config().Driver)
+		if db.Config().Driver != DefaultDriver {
+			t.Errorf("expected driver %q, got %s", DefaultDriver, db.Config().Driver)
 		}
 	})
 
@@ -90,7 +90,7 @@ func TestWithDriver(t *testing.T) {
 		}
 	})
 
-	t.Run("overrides config driver", func(t *testing.T) {
+	t.Run("normalizes config driver", func(t *testing.T) {
 		ctx := context.Background()
 		cfg := DefaultConfig().WithDriver("other")
 		db, err := Open(ctx, ":memory:", WithConfig(cfg), WithDriver("sqlite"))
@@ -99,8 +99,8 @@ func TestWithDriver(t *testing.T) {
 		}
 		defer db.Close()
 
-		if db.Config().Driver != "sqlite" {
-			t.Errorf("expected driver 'sqlite' after override, got %s", db.Config().Driver)
+		if db.Config().Driver != DefaultDriver {
+			t.Errorf("expected driver %q after override, got %s", DefaultDriver, db.Config().Driver)
 		}
 	})
 }

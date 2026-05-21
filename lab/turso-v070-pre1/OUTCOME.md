@@ -1,15 +1,17 @@
-# Turso 0.6.0 Lab Outcomes
+# Turso 0.7.0-pre.1 Lab Outcomes
 
 Newest entries go on top. The lab is for engine behavior that is interesting
 but not yet a `go-sqlite` API promise.
 
-## 2026-05-15 - Initial 0.6.0 Pass
+## 2026-05-20 - Initial 0.7.0-pre.1 Pass
 
 ### What We Tested
 
-Turso 0.6.0 release notes mention experimental `WITHOUT ROWID` support and
-initial multi-process database access. Both are product-shaped features, but
-neither should be smuggled into `pkg/database` without evidence.
+Turso 0.7.0-pre.1 release notes only ship install text. The tag diff is mostly
+MVCC, schema, generated-column, and `printf()` correctness work. The existing
+0.6.0 lab questions are still the right probes: `WITHOUT ROWID` and
+multi-process access should not be smuggled into `pkg/database` without fresh
+evidence.
 
 So this pass added executable probes for both.
 
@@ -44,7 +46,7 @@ processes work without extra flags.
 |---:|---:|---:|
 | 4 | 25 | 100 |
 
-That passed locally on Turso `v0.6.0` when children run one after another.
+That passed locally on Turso `v0.7.0-pre.1` when children run one after another.
 Overlapping child writers are different. Turso documents
 `experimental=multiprocess_wal` for inspecting or querying an open `.db` from
 another process, but this Go-driver lab still sees WAL locking:
@@ -54,10 +56,10 @@ another process, but this Go-driver lab still sees WAL locking:
 | 4 overlapping child writers, no experimental flag | at least one child gets `File is locked by another process` |
 | 4 overlapping child writers, `experimental=multiprocess_wal` | still gets `File is locked by another process` on `db.sqlite-wal` |
 
-That does not disprove the core feature. It says this exact `tursogo v0.6.0`
+That does not disprove the core feature. It says this exact `tursogo v0.7.0-pre.1`
 path is not enough evidence for `go-sqlite` to promise multiprocess WAL yet.
 
-The matching `tursodb 0.6.0` release binary tells the other half of the story:
+The matching `tursodb 0.7.0-pre.1` release binary tells the other half of the story:
 
 | setup | result |
 |---|---|

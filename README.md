@@ -4,7 +4,7 @@ Type-safe SQLite toolkit for Go.
 
 ## Features
 
-- **Database** - Connection wrapper with production PRAGMAs (WAL, foreign keys, busy timeout)
+- **Database** - Connection wrapper with Turso MVCC, foreign keys, and busy timeout
 - **Named Parameter Queries** - SQL with `:name` placeholders
 - **Repository Pattern** - Generic CRUD with automatic struct scanning
 - **Migrations** - Schema versioning with up/down functions
@@ -39,7 +39,6 @@ import (
     "context"
     "github.com/dnl-fm/go-sqlite/pkg/database"
     "github.com/dnl-fm/go-sqlite/pkg/repository"
-    _ "github.com/dnl-fm/go-sqlite/pkg/driver/modernc"
 )
 
 db, _ := database.Open(ctx, "app.db")
@@ -173,23 +172,24 @@ cycles := z.Cycles(12, zeit.Monthly)
 
 ## Database Configuration
 
-`database.Open` applies production-ready PRAGMAs by default:
+`database.Open` always opens through the Turso driver and enables MVCC. There is
+no supported old-WAL mode in this package.
 
 | PRAGMA | Default | Purpose |
 |--------|---------|---------|
-| `journal_mode` | `WAL` | Readers don't block writer |
+| `journal_mode` | `'mvcc'` | Concurrent writes across pooled connections |
 | `synchronous` | `NORMAL` | Balanced durability/speed |
 | `foreign_keys` | `ON` | Enforce referential integrity |
-| `busy_timeout` | `5000` | Wait 5s before locked error |
+| `busy_timeout` | `1000` | Wait before locked error |
 | `temp_store` | `MEMORY` | Temp tables in RAM |
-| `cache_size` | `-20000` | 20MB page cache |
-| `mmap_size` | `33554432` | 32MB memory-mapped I/O |
+| `cache_size` | `-64000` | 64MB page cache |
+| `mmap_size` | `67108864` | 64MB memory-mapped I/O |
 
 ```go
 // Default config (recommended)
 db, _ := database.Open(ctx, "app.db")
 
-// Production config (larger cache, longer timeout)
+// ProductionConfig is the same MVCC baseline.
 db, _ := database.Open(ctx, "app.db",
     database.WithConfig(database.ProductionConfig()),
 )
@@ -199,15 +199,28 @@ cfg := database.DefaultConfig().WithPragma("cache_size", "-64000")
 db, _ := database.Open(ctx, "app.db", database.WithConfig(cfg))
 ```
 
-### Turso Driver
+### Turso MVCC
 
-The default driver remains `modernc.org/sqlite`. Turso MVCC can be enabled explicitly when you want the Rust-based engine and concurrent writes across connections or scripts:
+Turso 0.6.0 added experimental plain-engine `WITHOUT ROWID` support behind `?experimental=without_rowid`, and the 0.7.0-pre.1 lab keeps the same boundary: MVCC still rejects writes to those tables. Do not use `WITHOUT ROWID` in migrations. Rebuild existing plain SQLite databases into normal rowid tables before opening them with this package. The current probes live in `lab/turso-v060` and `lab/turso-v070-pre1`.
 
-```go
-db, err := database.Open(ctx, "app.db", database.WithTursoMVCC())
+Install `tursodb` anywhere operators or tests run or inspect database files:
+
+```bash
+curl --proto '=https' --tlsv1.2 -LsSf \
+  https://github.com/tursodatabase/turso/releases/latest/download/turso_cli-installer.sh | sh
+source "$HOME/.turso/env"
 ```
 
-Turso 0.6.0 has experimental plain-engine `WITHOUT ROWID` support behind `?experimental=without_rowid`, but MVCC still rejects writes to those tables. Do not use `WITHOUT ROWID` in migrations for databases opened with `WithTursoMVCC()`, and rebuild existing plain SQLite databases into normal rowid tables before switching them to Turso MVCC. The current probes live in `lab/turso-v060`.
+Use `tursodb` instead of system `sqlite3` for local inspection. It can read
+normal SQLite databases and is required for Turso-format databases; plain
+`sqlite3` can reject valid Turso files as "file is not a database". Servers
+that run Turso-backed apps should have the CLI installed so operators can
+inspect the live file on the owning host.
+
+```bash
+tursodb app.db "PRAGMA integrity_check;"
+tursodb --experimental-multiprocess-wal app.db ".tables"
+```
 
 For lower-level code, use `database.ConcurrentTx` or `database.ConcurrentTxRetry`:
 
@@ -281,8 +294,7 @@ func down20251210123456(ctx context.Context, db *sql.DB) error {
 | `pkg/id/ulid` | Time-sortable unique IDs |
 | `pkg/id/nanoid` | Compact random IDs |
 | [`zeit-go`](https://github.com/dnl-fm/zeit-go) | Timezone handling and billing cycles (external) |
-| `pkg/driver/modernc` | modernc.org/sqlite driver |
-| `pkg/driver/turso` | Turso database/sql driver with MVCC support |
+| `pkg/driver/turso` | Turso database/sql driver registration |
 
 ## Examples
 

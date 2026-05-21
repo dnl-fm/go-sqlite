@@ -4,15 +4,11 @@
 //
 //	import _ "github.com/dnl-fm/go-sqlite/pkg/driver/turso"
 //
-// Then use with database.Open:
+// database.Open uses this driver by default:
 //
-//	db, err := database.Open(ctx, "data.db", database.WithDriver(turso.DriverName))
+//	db, err := database.Open(ctx, "data.db")
 //
-// To use concurrent write transactions, enable MVCC with:
-//
-//	PRAGMA journal_mode = 'mvcc'
-//
-// and start write transactions with:
+// For concurrent write transactions, start transactions with:
 //
 //	BEGIN CONCURRENT
 //

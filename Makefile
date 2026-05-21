@@ -12,6 +12,7 @@ test:
 # Run exploratory labs
 lab-test:
 	@cd lab/turso-v060 && GOWORK=off go test ./...
+	@cd lab/turso-v070-pre1 && GOWORK=off go test ./...
 
 # Run deterministic lint checks
 lint:

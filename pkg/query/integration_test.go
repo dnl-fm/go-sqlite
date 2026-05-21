@@ -5,11 +5,37 @@ import (
 	"database/sql"
 	"testing"
 
-	_ "modernc.org/sqlite"
+	_ "turso.tech/database/tursogo"
 )
 
+func openTursoMemory(t *testing.T) (*sql.DB, error) {
+	t.Helper()
+	db, err := sql.Open("turso", ":memory:")
+	if err != nil {
+		return nil, err
+	}
+	if _, err := db.Exec(`PRAGMA journal_mode='mvcc'`); err != nil {
+		db.Close()
+		return nil, err
+	}
+	return db, nil
+}
+
+func openTursoMemoryBench(b *testing.B) (*sql.DB, error) {
+	b.Helper()
+	db, err := sql.Open("turso", ":memory:")
+	if err != nil {
+		return nil, err
+	}
+	if _, err := db.Exec(`PRAGMA journal_mode='mvcc'`); err != nil {
+		db.Close()
+		return nil, err
+	}
+	return db, nil
+}
+
 func TestIntegration_Insert(t *testing.T) {
-	db, err := sql.Open("sqlite", ":memory:")
+	db, err := openTursoMemory(t)
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
@@ -48,7 +74,7 @@ func TestIntegration_Insert(t *testing.T) {
 }
 
 func TestIntegration_Select(t *testing.T) {
-	db, err := sql.Open("sqlite", ":memory:")
+	db, err := openTursoMemory(t)
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
@@ -96,7 +122,7 @@ func TestIntegration_Select(t *testing.T) {
 }
 
 func TestIntegration_Update(t *testing.T) {
-	db, err := sql.Open("sqlite", ":memory:")
+	db, err := openTursoMemory(t)
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
@@ -148,7 +174,7 @@ func TestIntegration_Update(t *testing.T) {
 }
 
 func TestIntegration_Delete(t *testing.T) {
-	db, err := sql.Open("sqlite", ":memory:")
+	db, err := openTursoMemory(t)
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
@@ -199,7 +225,7 @@ func TestIntegration_Delete(t *testing.T) {
 }
 
 func TestIntegration_DuplicatePlaceholders(t *testing.T) {
-	db, err := sql.Open("sqlite", ":memory:")
+	db, err := openTursoMemory(t)
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
@@ -255,7 +281,7 @@ func TestIntegration_DuplicatePlaceholders(t *testing.T) {
 }
 
 func TestIntegration_New(t *testing.T) {
-	db, err := sql.Open("sqlite", ":memory:")
+	db, err := openTursoMemory(t)
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
@@ -306,7 +332,7 @@ func TestIntegration_New(t *testing.T) {
 }
 
 func BenchmarkBuild(b *testing.B) {
-	db, err := sql.Open("sqlite", ":memory:")
+	db, err := openTursoMemoryBench(b)
 	if err != nil {
 		b.Fatalf("failed to open database: %v", err)
 	}

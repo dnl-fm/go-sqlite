@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/dnl-fm/go-sqlite/pkg/database"
-	_ "modernc.org/sqlite"
 )
 
 func setupTestDB(t *testing.T) *sql.DB {

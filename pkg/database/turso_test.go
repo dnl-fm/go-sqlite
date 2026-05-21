@@ -42,32 +42,18 @@ func TestTursoDriverOpen(t *testing.T) {
 func TestTursoRejectsWithoutRowidTables(t *testing.T) {
 	ctx := context.Background()
 	path := t.TempDir() + "/without-rowid.db"
-	setup, err := Open(ctx, path)
+	db, err := Open(ctx, path)
 	if err != nil {
-		t.Fatalf("failed to open setup database: %v", err)
-	}
-	if _, err := setup.Exec(ctx, "CREATE TABLE lookup (id TEXT PRIMARY KEY, value TEXT NOT NULL) WITHOUT ROWID"); err != nil {
-		t.Fatalf("failed to create WITHOUT ROWID table with modernc: %v", err)
-	}
-	if err := setup.Close(); err != nil {
-		t.Fatalf("failed to close setup database: %v", err)
-	}
-
-	db, err := Open(ctx, path, WithTursoMVCC())
-	if err != nil {
-		if !strings.Contains(err.Error(), "WITHOUT ROWID") && !strings.Contains(err.Error(), "Missing automatic index entry") {
-			t.Fatalf("expected WITHOUT ROWID-related open error, got %v", err)
-		}
-		return
+		t.Fatalf("failed to open database: %v", err)
 	}
 	defer db.Close()
 
-	_, err = db.Exec(ctx, "INSERT INTO lookup (id, value) VALUES (?, ?)", "a", "A")
+	_, err = db.Exec(ctx, "CREATE TABLE lookup (id TEXT PRIMARY KEY, value TEXT NOT NULL) WITHOUT ROWID")
 	if err == nil {
-		t.Fatal("expected Turso MVCC write to fail against WITHOUT ROWID table")
+		t.Fatal("expected Turso MVCC to reject WITHOUT ROWID tables")
 	}
-	if !strings.Contains(err.Error(), "WITHOUT ROWID") {
-		t.Fatalf("expected WITHOUT ROWID-related write error, got %v", err)
+	if !strings.Contains(err.Error(), "WITHOUT ROWID") && !strings.Contains(err.Error(), "experimental") {
+		t.Fatalf("expected WITHOUT ROWID-related create error, got %v", err)
 	}
 }
 
@@ -187,7 +173,7 @@ func TestTursoMVCCManualBeginConcurrentTx(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to begin concurrent tx: %v", err)
 	}
-	defer tx.Rollback() //nolint:errcheck
+	defer tx.Rollback()
 
 	if _, err := tx.ExecContext(ctx, "INSERT INTO hits (worker) VALUES (?)", 1); err != nil {
 		t.Fatalf("failed to insert row: %v", err)
@@ -286,9 +272,9 @@ func TestTursoMVCCConcurrentWritesAcrossDatabaseHandles(t *testing.T) {
 	}
 }
 
-func TestTursoBeginConcurrentRequiresMVCC(t *testing.T) {
+func TestTursoBeginConcurrentUsesDefaultMVCC(t *testing.T) {
 	ctx := context.Background()
-	db, err := Open(ctx, t.TempDir()+"/requires-mvcc.db", WithConfig(tursoBattleConfig()))
+	db, err := Open(ctx, t.TempDir()+"/requires-mvcc.db")
 	if err != nil {
 		t.Fatalf("failed to open turso database: %v", err)
 	}
@@ -300,15 +286,16 @@ func TestTursoBeginConcurrentRequiresMVCC(t *testing.T) {
 	}
 	defer conn.Close()
 
-	_, err = conn.ExecContext(ctx, "BEGIN CONCURRENT")
-	if err == nil {
-		t.Fatal("expected BEGIN CONCURRENT to fail before MVCC journal mode is enabled")
+	if _, err := conn.ExecContext(ctx, "BEGIN CONCURRENT"); err != nil {
+		t.Fatalf("expected BEGIN CONCURRENT to work with default MVCC config: %v", err)
+	}
+	if _, err := conn.ExecContext(ctx, "ROLLBACK"); err != nil {
+		t.Fatalf("failed to rollback concurrent tx: %v", err)
 	}
 }
 
 func tursoBattleConfig() *Config {
 	return DefaultConfig().
-		WithDriver(turso.DriverName).
 		WithMaxOpenConns(32).
 		WithMaxIdleConns(16).
 		WithPragma("busy_timeout", "1000")

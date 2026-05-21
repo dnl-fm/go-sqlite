@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	_ "modernc.org/sqlite"
+	_ "turso.tech/database/tursogo"
 )
 
 type testUser struct {
@@ -23,7 +23,7 @@ type testPartial struct {
 func setupTestDB(t *testing.T) *sql.DB {
 	t.Helper()
 
-	db, err := sql.Open("sqlite", ":memory:")
+	db, err := openTursoMemory(t)
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}
@@ -50,6 +50,19 @@ func setupTestDB(t *testing.T) *sql.DB {
 	}
 
 	return db
+}
+
+func openTursoMemory(t *testing.T) (*sql.DB, error) {
+	t.Helper()
+	db, err := sql.Open("turso", ":memory:")
+	if err != nil {
+		return nil, err
+	}
+	if _, err := db.Exec(`PRAGMA journal_mode='mvcc'`); err != nil {
+		db.Close()
+		return nil, err
+	}
+	return db, nil
 }
 
 func TestRow(t *testing.T) {

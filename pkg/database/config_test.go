@@ -10,40 +10,40 @@ import (
 func TestConfigDefaults(t *testing.T) {
 	cfg := DefaultConfig()
 
-	if cfg.MaxOpenConns != 25 {
-		t.Errorf("expected MaxOpenConns 25, got %d", cfg.MaxOpenConns)
+	if cfg.MaxOpenConns != 32 {
+		t.Errorf("expected MaxOpenConns 32, got %d", cfg.MaxOpenConns)
 	}
 
-	if cfg.MaxIdleConns != 5 {
-		t.Errorf("expected MaxIdleConns 5, got %d", cfg.MaxIdleConns)
+	if cfg.MaxIdleConns != 16 {
+		t.Errorf("expected MaxIdleConns 16, got %d", cfg.MaxIdleConns)
 	}
 
-	if cfg.ConnMaxLifetime != 5*time.Minute {
-		t.Errorf("expected ConnMaxLifetime 5m, got %v", cfg.ConnMaxLifetime)
+	if cfg.ConnMaxLifetime != time.Hour {
+		t.Errorf("expected ConnMaxLifetime 1h, got %v", cfg.ConnMaxLifetime)
 	}
 
-	if cfg.Pragmas["journal_mode"] != "WAL" {
-		t.Errorf("expected journal_mode WAL, got %s", cfg.Pragmas["journal_mode"])
+	if cfg.Pragmas["journal_mode"] != "'mvcc'" {
+		t.Errorf("expected journal_mode 'mvcc', got %s", cfg.Pragmas["journal_mode"])
 	}
 }
 
 func TestConfigDevelopment(t *testing.T) {
 	cfg := DevelopmentConfig()
 
-	if cfg.MaxOpenConns != 10 {
-		t.Errorf("expected MaxOpenConns 10, got %d", cfg.MaxOpenConns)
+	if cfg.MaxOpenConns != 32 {
+		t.Errorf("expected MaxOpenConns 32, got %d", cfg.MaxOpenConns)
 	}
 
-	if cfg.Pragmas["journal_mode"] != "DELETE" {
-		t.Errorf("expected journal_mode DELETE, got %s", cfg.Pragmas["journal_mode"])
+	if cfg.Pragmas["journal_mode"] != "'mvcc'" {
+		t.Errorf("expected journal_mode 'mvcc', got %s", cfg.Pragmas["journal_mode"])
 	}
 }
 
 func TestConfigProduction(t *testing.T) {
 	cfg := ProductionConfig()
 
-	if cfg.MaxOpenConns != 100 {
-		t.Errorf("expected MaxOpenConns 100, got %d", cfg.MaxOpenConns)
+	if cfg.MaxOpenConns != 32 {
+		t.Errorf("expected MaxOpenConns 32, got %d", cfg.MaxOpenConns)
 	}
 
 	if cfg.Pragmas["foreign_keys"] != "ON" {

@@ -20,13 +20,11 @@ type Database struct {
 // Option is a functional option for configuring the Database
 type Option func(*Database) error
 
-// WithDriver sets the database/sql driver name as a functional option.
-// Empty name is ignored (keeps current driver).
+// WithDriver is kept for source compatibility. go-sqlite always uses Turso MVCC.
 func WithDriver(name string) Option {
 	return func(d *Database) error {
-		if name != "" {
-			d.config.Driver = name
-		}
+		d.config.Driver = DefaultDriver
+		d.config.WithPragma("journal_mode", "'mvcc'")
 		return nil
 	}
 }
@@ -61,6 +59,8 @@ func Open(ctx context.Context, path string, opts ...Option) (*Database, error) {
 			return nil, err
 		}
 	}
+	db.config.Driver = DefaultDriver
+	db.config.WithPragma("journal_mode", "'mvcc'")
 
 	// Open database connection using configured driver
 	sqlDB, err := sql.Open(db.config.Driver, path)
@@ -141,7 +141,7 @@ func (d *Database) Query(ctx context.Context, query string, args ...any) (*sql.R
 		return nil, ErrClosed
 	}
 
-	rows, err := d.db.QueryContext(ctx, query, args...) //nolint:sqlclosecheck // caller is responsible for closing rows
+	rows, err := d.db.QueryContext(ctx, query, args...) //nolint:sqlclosecheck // GO-SQLITE-1: caller owns row closing
 	if err != nil {
 		return nil, &QueryError{Query: query, Err: err}
 	}

@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/dnl-fm/go-sqlite/pkg/query"
-	_ "modernc.org/sqlite"
+	_ "turso.tech/database/tursogo"
 )
 
 // Benchmarks
@@ -157,26 +157,22 @@ func BenchmarkTransaction(b *testing.B) {
 }
 
 // Concurrent stress tests
-// Note: SQLite has limited concurrency. These tests verify correctness, not throughput.
-
 func setupConcurrentDB(t *testing.T) *sql.DB {
 	t.Helper()
 
-	// Use temp file for concurrent tests - memory DB doesn't handle concurrent well
 	tmpFile := fmt.Sprintf("/tmp/test_concurrent_%d.db", time.Now().UnixNano())
 	t.Cleanup(func() {
 		os.Remove(tmpFile)
 	})
 
-	db, err := sql.Open("sqlite", tmpFile)
+	db, err := sql.Open("turso", tmpFile)
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}
 
-	// SQLite concurrency settings
-	_, _ = db.Exec("PRAGMA journal_mode=WAL")
+	_, _ = db.Exec("PRAGMA journal_mode='mvcc'")
 	_, _ = db.Exec("PRAGMA busy_timeout=5000")
-	db.SetMaxOpenConns(1) // SQLite works best with single writer
+	db.SetMaxOpenConns(32)
 
 	_, err = db.Exec(`
 		CREATE TABLE users (
@@ -385,7 +381,7 @@ func TestMemoryLargeResultSet(t *testing.T) {
 func setupBenchDB(b *testing.B) *sql.DB {
 	b.Helper()
 
-	db, err := sql.Open("sqlite", ":memory:")
+	db, err := openTursoMemoryBench(b)
 	if err != nil {
 		b.Fatalf("failed to open db: %v", err)
 	}
@@ -402,6 +398,19 @@ func setupBenchDB(b *testing.B) *sql.DB {
 	}
 
 	return db
+}
+
+func openTursoMemoryBench(b *testing.B) (*sql.DB, error) {
+	b.Helper()
+	db, err := sql.Open("turso", ":memory:")
+	if err != nil {
+		return nil, err
+	}
+	if _, err := db.Exec(`PRAGMA journal_mode='mvcc'`); err != nil {
+		db.Close()
+		return nil, err
+	}
+	return db, nil
 }
 
 func insertBulkUsers(b *testing.B, db *sql.DB, count int) {
