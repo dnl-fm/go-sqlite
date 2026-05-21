@@ -71,6 +71,57 @@ func TestMVCCStillRejectsWithoutRowIDWrites(t *testing.T) {
 	}
 }
 
+func TestNativeFTSRequiresExperimentalIndexMethod(t *testing.T) {
+	db := openTurso(t, filepath.Join(t.TempDir(), "native-fts-gated.db"))
+	defer db.Close()
+
+	if _, err := db.Exec(`create table docs (id text primary key, body text not null)`); err != nil {
+		t.Fatalf("failed to create docs table: %v", err)
+	}
+	_, err := db.Exec(`create index docs_fts on docs using fts (id, body) with (tokenizer = 'ngram')`)
+	if err == nil {
+		t.Fatal("native FTS should still be gated without experimental=index_method")
+	}
+	if !strings.Contains(err.Error(), "experimental") || !strings.Contains(err.Error(), "index method") {
+		t.Fatalf("expected experimental index method error, got %v", err)
+	}
+}
+
+func TestNativeFTSPlainGoDriverStillMissingModule(t *testing.T) {
+	db := openTurso(t, filepath.Join(t.TempDir(), "native-fts-plain.db")+"?experimental=index_method")
+	defer db.Close()
+
+	if _, err := db.Exec(`create table docs (id text primary key, body text not null)`); err != nil {
+		t.Fatalf("failed to create docs table: %v", err)
+	}
+	_, err := db.Exec(`create index docs_fts on docs using fts (id, body) with (tokenizer = 'ngram')`)
+	if err == nil {
+		t.Fatal("native FTS should not be exposed by the Go driver yet")
+	}
+	if !strings.Contains(err.Error(), "unknown module name 'fts'") {
+		t.Fatalf("expected missing fts module error, got %v", err)
+	}
+}
+
+func TestNativeFTSStillUnsupportedInMVCC(t *testing.T) {
+	db := openTurso(t, filepath.Join(t.TempDir(), "native-fts-mvcc.db")+"?experimental=index_method")
+	defer db.Close()
+
+	if _, err := db.Exec(`pragma journal_mode='mvcc'`); err != nil {
+		t.Fatalf("failed to enable MVCC: %v", err)
+	}
+	if _, err := db.Exec(`create table docs (id text primary key, body text not null)`); err != nil {
+		t.Fatalf("failed to create docs table: %v", err)
+	}
+	_, err := db.Exec(`create index docs_fts on docs using fts (id, body) with (tokenizer = 'ngram')`)
+	if err == nil {
+		t.Fatal("native FTS should not be supported in MVCC yet")
+	}
+	if !strings.Contains(err.Error(), "Custom index modules are not supported in MVCC mode") {
+		t.Fatalf("expected MVCC custom index module error, got %v", err)
+	}
+}
+
 func TestSameProcessMVCCAutocommitWriteStorm(t *testing.T) {
 	const writers = 32
 	const writesPerWriter = 50

@@ -5,7 +5,7 @@ changed. That is exactly when a lab earns its rent.
 
 The package tests under `pkg/` prove the supported `go-sqlite` contract. This
 lab proves upstream behavior we are still deciding how to expose: experimental
-`WITHOUT ROWID` support and multi-process access.
+`WITHOUT ROWID` support, native FTS, and multi-process access.
 
 ## What We Know
 
@@ -20,6 +20,18 @@ plain engine and only behind an experimental flag."
 
 That last row matters for this repo. `WithTursoMVCC()` is still right to steer
 users away from `WITHOUT ROWID` tables.
+
+Native FTS is also not ready for the Go/MVCC package contract.
+
+| mode | DSN / command | result |
+|---|---|---|
+| Go driver, no flag | `db.sqlite` | rejects `USING fts` as experimental index method |
+| Go driver, plain Turso | `db.sqlite?experimental=index_method` | rejects `USING fts` with `unknown module name 'fts'` |
+| Go driver, MVCC Turso | `db.sqlite?experimental=index_method` + `pragma journal_mode='mvcc'` | rejects custom index modules in MVCC |
+| CLI, plain Turso | `tursodb --experimental-index-method db.sqlite` | can create/query native FTS |
+
+That last CLI row is useful for sidecar/search-projection labs, not for
+`go-sqlite`'s canonical MVCC path.
 
 Multi-process access is also worth testing outside unit tests. A single process
 can lie to you by accident. This lab forks child test processes and has them
@@ -66,5 +78,7 @@ TURSO_V060_TURSODB_BIN=/path/to/tursodb GOWORK=off go test ./...
   `WITHOUT ROWID`, separate from `WithTursoMVCC()`?
 - Should multi-process WAL get a product-level helper, or stay documented as a
   Turso engine behavior until we know the operational edges?
+- Should native FTS get a product-level helper once the Go driver and MVCC path
+  support custom index modules?
 - Should the root README replace the blanket "Turso does not support
   WITHOUT ROWID" wording with the mode-specific rule above?
