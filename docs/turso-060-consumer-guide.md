@@ -12,7 +12,7 @@ promise yet.
 
 | Feature | Consumer rule |
 |---|---|
-| `WITHOUT ROWID` | Plain Turso can use it only with `?experimental=without_rowid`. Turso MVCC still rejects writes to those tables. |
+| `WITHOUT ROWID` | Plain Turso can use it only with `?experimental=without_rowid`. `go-sqlite` requires normal rowid tables and rejects `WITHOUT ROWID` schemas. |
 | MVCC writes | `database.Open` uses Turso MVCC by default. Use `ConcurrentTxRetry` / `BEGIN CONCURRENT` on one reserved connection for multi-statement concurrent writes. |
 | Live CLI inspection | Use `db?experimental=multiprocess_wal` in the Go app and `tursodb --experimental-multiprocess-wal db ...` in the CLI. |
 | Concurrent Go writer processes | Not a promise. The labs still see WAL file-locking with multiple Go child writers through `tursogo v0.6.0` and `v0.7.0-pre.1`. |
@@ -23,7 +23,7 @@ promise yet.
 2. Run the app's normal Go test gate with `GOWORK=off` unless the repo documents
    a workspace-specific flow.
 3. Search migrations for `WITHOUT ROWID`.
-4. Keep `WITHOUT ROWID` out of the schema; this package opens databases with Turso MVCC.
+4. Keep `WITHOUT ROWID` out of the schema; this package opens databases with Turso MVCC and validates the rowid requirement.
 5. Install `tursodb` on machines that run or inspect database files:
    ```bash
    curl --proto '=https' --tlsv1.2 -LsSf \

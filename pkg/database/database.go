@@ -86,6 +86,10 @@ func Open(ctx context.Context, path string, opts ...Option) (*Database, error) {
 		sqlDB.Close()
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
+	if err := ValidateRowIDSchema(ctx, db.db); err != nil {
+		sqlDB.Close()
+		return nil, err
+	}
 
 	return db, nil
 }
@@ -166,6 +170,9 @@ func (d *Database) Exec(ctx context.Context, query string, args ...any) (sql.Res
 
 	if d.closed {
 		return nil, ErrClosed
+	}
+	if err := rejectWithoutRowIDSQL(query); err != nil {
+		return nil, &ExecError{Query: query, Err: err}
 	}
 
 	result, err := d.db.ExecContext(ctx, query, args...)

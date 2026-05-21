@@ -201,7 +201,7 @@ db, _ := database.Open(ctx, "app.db", database.WithConfig(cfg))
 
 ### Turso MVCC
 
-Turso 0.6.0 added experimental plain-engine `WITHOUT ROWID` support behind `?experimental=without_rowid`, and the 0.7.0-pre.1 lab keeps the same boundary: MVCC still rejects writes to those tables. Do not use `WITHOUT ROWID` in migrations. Rebuild existing plain SQLite databases into normal rowid tables before opening them with this package. The current probes live in `lab/turso-v060` and `lab/turso-v070-pre1`.
+Turso 0.6.0 added experimental plain-engine `WITHOUT ROWID` support behind `?experimental=without_rowid`, and the 0.7.0-pre.1 lab keeps the same boundary: MVCC still rejects writes to those tables. This package requires normal rowid tables. `database.Open` validates existing schema, `database.Exec` rejects `WITHOUT ROWID` SQL, and the migration runner validates the schema after each migration. Rebuild existing plain SQLite databases into normal rowid tables before opening them with this package. The current probes live in `lab/turso-v060` and `lab/turso-v070-pre1`.
 
 Install `tursodb` anywhere operators or tests run or inspect database files:
 

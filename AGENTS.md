@@ -32,7 +32,8 @@ not by marketing headline.
 
 - `database.Open`, `DefaultConfig`, `ProductionConfig`, and `DevelopmentConfig`
   all use Turso MVCC. There is no supported old-WAL mode in this package.
-- Turso MVCC still means normal rowid tables only. Turso 0.6.0 and
+- Turso MVCC still means normal rowid tables only. `database.Open`,
+  `database.Exec`, and the migration runner enforce that requirement. Turso 0.6.0 and
   0.7.0-pre.1 can create experimental plain-engine `WITHOUT ROWID` tables with
   `?experimental=without_rowid`, but MVCC rejects writes to those tables.
 - Multi-statement writes on MVCC paths should use `ConcurrentTxRetry` or

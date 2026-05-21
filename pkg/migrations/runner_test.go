@@ -3,6 +3,7 @@ package migrations
 import (
 	"context"
 	"database/sql"
+	"strings"
 	"testing"
 )
 
@@ -104,6 +105,36 @@ func TestRun(t *testing.T) {
 	}
 	if len(executed) != 0 {
 		t.Errorf("second Run should not execute any migrations, executed %d", len(executed))
+	}
+}
+
+func TestRunRejectsWithoutRowIDMigration(t *testing.T) {
+	Reset()
+	defer Reset()
+
+	ctx := context.Background()
+	db := setupTestDB(t)
+	defer db.Close()
+
+	Register(Migration{
+		Version:     "20251107000003",
+		Description: "without_rowid",
+		Up: func(ctx context.Context, db *sql.DB) error {
+			_, err := db.ExecContext(ctx, `
+				CREATE TABLE lookup (
+					id TEXT PRIMARY KEY
+				) WITHOUT ROWID
+			`)
+			return err
+		},
+	})
+
+	err := Run(ctx, db)
+	if err == nil {
+		t.Fatal("expected WITHOUT ROWID migration to fail")
+	}
+	if !strings.Contains(err.Error(), "WITHOUT ROWID") && !strings.Contains(err.Error(), "requires rowid tables") {
+		t.Fatalf("expected rowid requirement error, got %v", err)
 	}
 }
 

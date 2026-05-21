@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"sort"
 	"time"
+
+	"github.com/dnl-fm/go-sqlite/pkg/database"
 )
 
 // Run executes all pending migrations
@@ -59,6 +61,9 @@ func runMigration(ctx context.Context, db *sql.DB, m Migration) error {
 	if err != nil {
 		return fmt.Errorf("up migration failed: %w", err)
 	}
+	if validationErr := database.ValidateRowIDSchema(ctx, db); validationErr != nil {
+		return validationErr
+	}
 	duration := time.Since(start)
 
 	// Record migration in a transaction
@@ -69,7 +74,7 @@ func runMigration(ctx context.Context, db *sql.DB, m Migration) error {
 
 	defer func() {
 		if err != nil {
-			tx.Rollback() //nolint:errcheck // best-effort rollback after error
+			tx.Rollback() //nolint:errcheck // GO-SQLITE-1: best-effort rollback after error
 		}
 	}()
 
@@ -178,6 +183,9 @@ func rollbackMigration(ctx context.Context, db *sql.DB, m Migration) error {
 	if err != nil {
 		return fmt.Errorf("down migration failed: %w", err)
 	}
+	if validationErr := database.ValidateRowIDSchema(ctx, db); validationErr != nil {
+		return validationErr
+	}
 
 	// Remove migration record in a transaction
 	tx, err := db.BeginTx(ctx, nil)
@@ -187,7 +195,7 @@ func rollbackMigration(ctx context.Context, db *sql.DB, m Migration) error {
 
 	defer func() {
 		if err != nil {
-			tx.Rollback() //nolint:errcheck // best-effort rollback after error
+			tx.Rollback() //nolint:errcheck // GO-SQLITE-1: best-effort rollback after error
 		}
 	}()
 
