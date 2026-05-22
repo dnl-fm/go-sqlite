@@ -1,13 +1,13 @@
-# Turso 0.7.0-pre.1 Lab Outcomes
+# Turso 0.7.0-pre.2 Lab Outcomes
 
 Newest entries go on top. The lab is for engine behavior that is interesting
 but not yet a `go-sqlite` API promise.
 
-## 2026-05-20 - Initial 0.7.0-pre.1 Pass
+## 2026-05-22 - Initial 0.7.0-pre.2 Pass
 
 ### What We Tested
 
-Turso 0.7.0-pre.1 release notes only ship install text. The tag diff is mostly
+Turso 0.7.0-pre.2 release notes only ship install text. The tag diff is mostly
 MVCC, schema, generated-column, and `printf()` correctness work. The existing
 0.6.0 lab questions are still the right probes: `WITHOUT ROWID` and
 multi-process access should not be smuggled into `pkg/database` without fresh
@@ -46,7 +46,7 @@ processes work without extra flags.
 |---:|---:|---:|
 | 4 | 25 | 100 |
 
-That passed locally on Turso `v0.7.0-pre.1` when children run one after another.
+That passed locally on Turso `v0.7.0-pre.2` when children run one after another.
 Overlapping child writers are different. Turso documents
 `experimental=multiprocess_wal` for inspecting or querying an open `.db` from
 another process, but this Go-driver lab still sees WAL locking:
@@ -56,24 +56,26 @@ another process, but this Go-driver lab still sees WAL locking:
 | 4 overlapping child writers, no experimental flag | at least one child gets `File is locked by another process` |
 | 4 overlapping child writers, `experimental=multiprocess_wal` | still gets `File is locked by another process` on `db.sqlite-wal` |
 
-That does not disprove the core feature. It says this exact `tursogo v0.7.0-pre.1`
+That does not disprove the core feature. It says this exact `tursogo v0.7.0-pre.2`
 path is not enough evidence for `go-sqlite` to promise multiprocess WAL yet.
 
-The matching `tursodb 0.7.0-pre.1` release binary tells the other half of the story:
+The matching `tursodb 0.7.0-pre.2` release binary still needs to tell the other
+half of the story. The default lab gate did not run the optional CLI probe
+because this host currently has `tursodb 0.6.0` installed.
 
 | setup | result |
 |---|---|
-| Go app opens `db?experimental=multiprocess_wal` and keeps it open | holder stays live and polls the table |
-| `tursodb --experimental-multiprocess-wal db "select count(*) from writes;"` | sees the Go app row |
-| `tursodb --experimental-multiprocess-wal db "insert into writes(source) values('tursodb');"` | succeeds |
-| Go app keeps polling the table | observes the row count rise to `2` |
+| Go-driver probes | pass |
+| matching `tursodb 0.7.0-pre.2` live-inspection probe | not run by default |
 
-So the release-note scenario is real for Go-app-plus-CLI inspection. It is not
-the same as many Go processes writing concurrently through `tursogo`.
+The older 0.6.0 CLI result says the release-note scenario is real for
+Go-app-plus-CLI inspection. This 0.7.0-pre.2 pass does not re-confirm that until
+the optional probe runs with the matching binary.
 
 ### What This Means
 
-The dependency bump is safe, but the docs need nuance.
+The prerelease bump looks safe under the Go-driver probes, but the docs need
+nuance.
 
 Plain Turso can test and maybe expose experimental `WITHOUT ROWID`. MVCC Turso
 still should not promise it. Same-process pooled MVCC writes are fine.

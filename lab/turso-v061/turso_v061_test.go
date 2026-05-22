@@ -1,4 +1,4 @@
-package tursov070pre1
+package tursov061
 
 import (
 	"context"
@@ -176,7 +176,7 @@ func TestSameProcessMVCCAutocommitWriteStorm(t *testing.T) {
 }
 
 func TestSequentialMultiProcessAutocommitWrites(t *testing.T) {
-	if os.Getenv("TURSO_V070_PRE1_CHILD") == "1" {
+	if os.Getenv("TURSO_V061_CHILD") == "1" {
 		runMultiProcessChild(t)
 		return
 	}
@@ -212,7 +212,7 @@ func TestSequentialMultiProcessAutocommitWrites(t *testing.T) {
 }
 
 func TestConcurrentMultiProcessWritersNeedExperimentalWAL(t *testing.T) {
-	if os.Getenv("TURSO_V070_PRE1_CONCURRENT_CHILD") == "1" {
+	if os.Getenv("TURSO_V061_CONCURRENT_CHILD") == "1" {
 		runMultiProcessChild(t)
 		return
 	}
@@ -253,7 +253,7 @@ func TestConcurrentMultiProcessWritersNeedExperimentalWAL(t *testing.T) {
 }
 
 func TestExperimentalMultiProcessWALDoesNotYetUnlockConcurrentGoProcesses(t *testing.T) {
-	if os.Getenv("TURSO_V070_PRE1_MULTIPROCESS_WAL_CHILD") == "1" {
+	if os.Getenv("TURSO_V061_MULTIPROCESS_WAL_CHILD") == "1" {
 		runMultiProcessChild(t)
 		return
 	}
@@ -278,8 +278,8 @@ func TestExperimentalMultiProcessWALDoesNotYetUnlockConcurrentGoProcesses(t *tes
 				processID,
 				writesPerProcess,
 				"TestExperimentalMultiProcessWALDoesNotYetUnlockConcurrentGoProcesses",
-				"TURSO_V070_PRE1_MULTIPROCESS_WAL_CHILD=1",
-				"TURSO_V070_PRE1_DSN="+multiprocessWALDSN(dbPath),
+				"TURSO_V061_MULTIPROCESS_WAL_CHILD=1",
+				"TURSO_V061_DSN="+multiprocessWALDSN(dbPath),
 			)
 		}()
 	}
@@ -299,11 +299,11 @@ func TestExperimentalMultiProcessWALDoesNotYetUnlockConcurrentGoProcesses(t *tes
 }
 
 func TestExperimentalMultiProcessWALAllowsTursoDBCLIToInspectLiveGoApp(t *testing.T) {
-	tursodb := os.Getenv("TURSO_V070_PRE1_TURSODB_BIN")
+	tursodb := os.Getenv("TURSO_V061_TURSODB_BIN")
 	if tursodb == "" {
-		t.Skip("set TURSO_V070_PRE1_TURSODB_BIN to a Turso 0.7.0-pre.1 tursodb binary to run the CLI live-inspection probe")
+		t.Skip("set TURSO_V061_TURSODB_BIN to a Turso 0.6.1 tursodb binary to run the CLI live-inspection probe")
 	}
-	if os.Getenv("TURSO_V070_PRE1_HOLDER") == "1" {
+	if os.Getenv("TURSO_V061_HOLDER") == "1" {
 		runLiveHolder(t)
 		return
 	}
@@ -316,9 +316,9 @@ func TestExperimentalMultiProcessWALAllowsTursoDBCLIToInspectLiveGoApp(t *testin
 
 	holder := exec.CommandContext(ctx, os.Args[0], "-test.run=TestExperimentalMultiProcessWALAllowsTursoDBCLIToInspectLiveGoApp")
 	holder.Env = append(os.Environ(),
-		"TURSO_V070_PRE1_HOLDER=1",
-		"TURSO_V070_PRE1_DSN="+multiprocessWALDSN(dbPath),
-		"TURSO_V070_PRE1_READY="+readyPath,
+		"TURSO_V061_HOLDER=1",
+		"TURSO_V061_DSN="+multiprocessWALDSN(dbPath),
+		"TURSO_V061_READY="+readyPath,
 	)
 	holderOut, err := holder.StderrPipe()
 	if err != nil {
@@ -371,11 +371,11 @@ func runChildProcessWithEnv(dbPath string, processID, writes int, testName strin
 
 	cmd := exec.CommandContext(ctx, os.Args[0], "-test.run="+testName)
 	cmd.Env = append(os.Environ(),
-		"TURSO_V070_PRE1_CHILD=1",
-		"TURSO_V070_PRE1_CONCURRENT_CHILD=1",
-		"TURSO_V070_PRE1_DB_PATH="+dbPath,
-		"TURSO_V070_PRE1_PROCESS_ID="+strconv.Itoa(processID),
-		"TURSO_V070_PRE1_WRITES="+strconv.Itoa(writes),
+		"TURSO_V061_CHILD=1",
+		"TURSO_V061_CONCURRENT_CHILD=1",
+		"TURSO_V061_DB_PATH="+dbPath,
+		"TURSO_V061_PROCESS_ID="+strconv.Itoa(processID),
+		"TURSO_V061_WRITES="+strconv.Itoa(writes),
 	)
 	cmd.Env = append(cmd.Env, extraEnv...)
 	out, err := cmd.CombinedOutput()
@@ -391,17 +391,17 @@ func runChildProcessWithEnv(dbPath string, processID, writes int, testName strin
 func runMultiProcessChild(t *testing.T) {
 	t.Helper()
 
-	dbPath := os.Getenv("TURSO_V070_PRE1_DB_PATH")
-	processID, err := strconv.Atoi(os.Getenv("TURSO_V070_PRE1_PROCESS_ID"))
+	dbPath := os.Getenv("TURSO_V061_DB_PATH")
+	processID, err := strconv.Atoi(os.Getenv("TURSO_V061_PROCESS_ID"))
 	if err != nil {
 		t.Fatalf("invalid process id: %v", err)
 	}
-	writes, err := strconv.Atoi(os.Getenv("TURSO_V070_PRE1_WRITES"))
+	writes, err := strconv.Atoi(os.Getenv("TURSO_V061_WRITES"))
 	if err != nil {
 		t.Fatalf("invalid write count: %v", err)
 	}
 
-	dsn := os.Getenv("TURSO_V070_PRE1_DSN")
+	dsn := os.Getenv("TURSO_V061_DSN")
 	if dsn == "" {
 		dsn = dbPath + "?_busy_timeout=5000"
 	}
@@ -422,7 +422,7 @@ func multiprocessWALDSN(path string) string {
 func runLiveHolder(t *testing.T) {
 	t.Helper()
 
-	db := openTurso(t, os.Getenv("TURSO_V070_PRE1_DSN"))
+	db := openTurso(t, os.Getenv("TURSO_V061_DSN"))
 	defer db.Close()
 
 	if _, err := db.Exec(`create table if not exists writes (id integer primary key, source text not null)`); err != nil {
@@ -431,7 +431,7 @@ func runLiveHolder(t *testing.T) {
 	if _, err := db.Exec(`insert into writes(source) values('go-holder')`); err != nil {
 		t.Fatalf("holder failed to insert row: %v", err)
 	}
-	if err := os.WriteFile(os.Getenv("TURSO_V070_PRE1_READY"), []byte("ready"), 0o644); err != nil {
+	if err := os.WriteFile(os.Getenv("TURSO_V061_READY"), []byte("ready"), 0o644); err != nil {
 		t.Fatalf("holder failed to write ready file: %v", err)
 	}
 

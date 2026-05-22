@@ -1,0 +1,83 @@
+# Turso 0.6.1 Lab Outcomes
+
+Newest entries go on top. The lab is for engine behavior that is interesting
+but not yet a `go-sqlite` API promise.
+
+## 2026-05-22 - Initial 0.6.1 Pass
+
+### What We Tested
+
+Turso 0.6.1 is a stable correctness release over 0.6.0. Its release notes are
+mostly MVCC fixes: abandoned commit cleanup, savepoint rollback, schema-cookie
+checks, rowid allocator watermark preservation, and checkpoint/index fixes.
+
+The existing 0.6.0 lab questions are still the right probes: `WITHOUT ROWID`,
+native FTS, same-process MVCC writes, and multi-process access should not be
+smuggled into `pkg/database` without fresh evidence.
+
+### What Happened
+
+`WITHOUT ROWID` has three different answers:
+
+| mode | result |
+|---|---|
+| plain Turso without flag | rejected with an experimental-feature error |
+| plain Turso with `experimental=without_rowid` | create, insert, and select pass |
+| MVCC Turso with `experimental=without_rowid` | table creation passes, write fails |
+
+The MVCC failure is the important bit. The old repo wording was too broad, but
+the old `WithTursoMVCC()` warning is still directionally correct.
+
+Same-process MVCC autocommit writes are fine under a real pool:
+
+| process shape | connections | writers | writes | result |
+|---|---:|---:|---:|---|
+| one Go process, Turso MVCC | 32 | 32 goroutines | 1,600 inserts | pass |
+
+That means consumer code should not treat `database/sql` pooling as suspicious
+by itself. If the app is one process with one `*sql.DB` using Turso MVCC,
+concurrent autocommit writes are supported by the lab evidence.
+
+The multi-process probe starts child test processes. Each child opens the same
+database file with the Turso driver and writes its own rows. Sequential child
+processes work without extra flags.
+
+| processes | writes per process | expected rows |
+|---:|---:|---:|
+| 4 | 25 | 100 |
+
+That passed locally on Turso `v0.6.1` when children run one after another.
+Overlapping child writers are different. Turso documents
+`experimental=multiprocess_wal` for inspecting or querying an open `.db` from
+another process, but this Go-driver lab still sees WAL locking:
+
+| scenario | result |
+|---|---|
+| 4 overlapping child writers, no experimental flag | at least one child gets `File is locked by another process` |
+| 4 overlapping child writers, `experimental=multiprocess_wal` | still gets `File is locked by another process` on `db.sqlite-wal` |
+
+That does not disprove the core feature. It says this exact `tursogo v0.6.1`
+path is not enough evidence for `go-sqlite` to promise multiprocess WAL yet.
+
+The matching `tursodb 0.6.1` release binary still needs to tell the other half
+of the story. The default lab gate did not run the optional CLI probe because
+this host currently has `tursodb 0.6.0` installed.
+
+| setup | result |
+|---|---|
+| Go-driver probes | pass |
+| matching `tursodb 0.6.1` live-inspection probe | not run by default |
+
+The 0.6.0 CLI result says the release-note scenario is real for
+Go-app-plus-CLI inspection. This 0.6.1 pass does not re-confirm that until the
+optional probe runs with the matching binary.
+
+### What This Means
+
+The dependency bump looks safe under the Go-driver probes, but the docs need
+nuance.
+
+Plain Turso can test and maybe expose experimental `WITHOUT ROWID`. MVCC Turso
+still should not promise it. Same-process pooled MVCC writes are fine.
+Multi-process WAL is proven for live CLI inspection, but not for arbitrary
+concurrent Go writer fleets.

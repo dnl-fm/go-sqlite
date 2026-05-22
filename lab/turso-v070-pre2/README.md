@@ -1,6 +1,6 @@
-# Turso 0.7.0-pre.1 Lab
+# Turso 0.7.0-pre.2 Lab
 
-Turso 0.7.0-pre.1 is a correctness-heavy prerelease without detailed release
+Turso 0.7.0-pre.2 is a correctness-heavy prerelease without detailed release
 notes. That is exactly when a lab earns its rent.
 
 The package tests under `pkg/` prove the supported `go-sqlite` contract. This
@@ -50,26 +50,27 @@ an experimental WAL path for opening a live database from another process:
 db.sqlite?experimental=multiprocess_wal
 ```
 
-Through `tursogo v0.7.0-pre.1` on this Linux host, concurrent child processes still
+Through `tursogo v0.7.0-pre.2` on this Linux host, concurrent child processes still
 hit WAL file locking even with that flag. That may mean the Go binding path,
 our DSN shape, or our test shape is still missing something. The lab keeps the
 failure as evidence instead of pretending the release note settled it.
 
-The exact release CLI story does work. With a Go app holding the database open
-using `experimental=multiprocess_wal`, the `tursodb 0.7.0-pre.1` shell can read and
-write the same file using `--experimental-multiprocess-wal`.
+The exact release CLI story has its own optional probe. With a matching
+`tursodb 0.7.0-pre.2` binary, the lab checks whether a Go app holding the
+database open using `experimental=multiprocess_wal` can be inspected and
+written by the CLI with `--experimental-multiprocess-wal`.
 
 ## Running It
 
 ```bash
-cd lab/turso-v070-pre1
+cd lab/turso-v070-pre2
 GOWORK=off go test ./...
 ```
 
 The CLI probe is optional because it needs the release `tursodb` binary:
 
 ```bash
-TURSO_V070_PRE1_TURSODB_BIN=/path/to/tursodb GOWORK=off go test ./...
+TURSO_V070_PRE2_TURSODB_BIN=/path/to/tursodb GOWORK=off go test ./...
 ```
 
 ## Next Questions
