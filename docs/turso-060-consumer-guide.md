@@ -15,7 +15,7 @@ not materially change, but the embedded engine did. The `v0.6.1` and
 | `WITHOUT ROWID` | Plain Turso can use it only with `?experimental=without_rowid`. `go-sqlite` requires normal rowid tables and rejects `WITHOUT ROWID` schemas. |
 | MVCC writes | `database.Open` uses Turso MVCC by default. Use `ConcurrentTxRetry` / `BEGIN CONCURRENT` on one reserved connection for multi-statement concurrent writes. |
 | Live CLI inspection | Use `db?experimental=multiprocess_wal` in the Go app and `tursodb --experimental-multiprocess-wal db ...` in the CLI. |
-| Concurrent Go writer processes | Not a promise. The labs still see WAL file-locking with multiple Go child writers through `tursogo v0.6.0`, `v0.6.1`, and `v0.7.0-pre.2`. |
+| Concurrent Go writer processes | Not a promise. The labs still see WAL file-locking with multiple Go child writers through `tursogo v0.6.0`, `v0.6.1`, `v0.7.0-pre.2`, and `v0.7.0-pre.4`. |
 
 ## Upgrade checklist for apps
 
@@ -37,6 +37,6 @@ not materially change, but the embedded engine did. The `v0.6.1` and
 7. If the app needs live production inspection, test the exact operator path
    with the matching `tursodb` release and `--experimental-multiprocess-wal`.
 
-The lab evidence lives in `lab/turso-v060`, `lab/turso-v061`, and
-`lab/turso-v070-pre2`. It is intentionally not part of `pkg/` because it tests
+The lab evidence lives in `lab/turso-v060`, `lab/turso-v061`,
+`lab/turso-v070-pre2`, and `lab/turso-v070-pre4`. It is intentionally not part of `pkg/` because it tests
 upstream behavior we may or may not wrap.
