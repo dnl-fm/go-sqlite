@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Installed by scripts/install-git-hooks.sh.
+# Keep this hook boring: one repo-owned gate, no retired wrapper tools.
+
+set -euo pipefail
+
+exec make check

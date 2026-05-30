@@ -1,4 +1,4 @@
-.PHONY: build test lab-test lint backpressure check check-dev file-size test-cover test-verbose clean migrate-build
+.PHONY: build test lab-test lint backpressure check check-dev rabbit-check rabbit-check-dev rabbit-review file-size test-cover test-verbose install-hooks clean migrate-build
 
 # Build migrate CLI
 build:
@@ -22,21 +22,30 @@ lint:
 	@GOWORK=off golangci-lint run --new --disable=intrange --disable=ireturn --disable=noinlineerr --disable=unqueryvet
 
 # Run local quality backpressure
-backpressure: lint file-size test build
+backpressure: lint file-size test build rabbit-check
 
 # Run full repository policy and local backpressure
-check:
-	@rabbit check
-	@$(MAKE) backpressure
+check: backpressure
 
 # Run development-phase checks. Rabbit still runs, but selected rules are
 # downgraded to warnings so policy churn stays visible without blocking flow.
 check-dev:
+	@$(MAKE) lint file-size test build rabbit-check-dev
+
+rabbit-check:
+	@rabbit check --ci
+
+rabbit-check-dev:
 	@rabbit check --dev --dev-allow "$(RABBIT_DEV_ALLOW)"
-	@$(MAKE) backpressure
+
+rabbit-review:
+	@rabbit review
 
 file-size:
 	@./scripts/check-file-size.sh
+
+install-hooks:
+	@./scripts/install-git-hooks.sh
 
 # Run tests with coverage
 test-cover:

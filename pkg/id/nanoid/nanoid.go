@@ -12,7 +12,7 @@ import (
 // NanoID represents a compact, URL-safe unique identifier.
 // Default length is 21 characters using alphabet: _-0-9a-zA-Z
 //
-//nolint:recvcheck // value receivers for getters/marshalers, pointer for UnmarshalJSON
+//nolint:recvcheck // value receivers for getters/marshalers, pointer for UnmarshalJSON. RBT-005
 type NanoID struct {
 	value string
 }
