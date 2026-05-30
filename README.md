@@ -307,7 +307,7 @@ go run tmp/examples/timezones/main.go
 
 ## Requirements
 
-- Go 1.22+
+- Go 1.26+
 
 ## License
 
