@@ -7,15 +7,37 @@ into "Turso supports everything now." The details matter.
 
 `go-sqlite` now depends on `turso.tech/database/tursogo v0.6.0`. The Go API did
 not materially change, but the embedded engine did. The `v0.6.1` and
-`v0.7.0-pre.2`, `v0.7.0-pre.4`, and `v0.7.0-pre.5` labs keep the same consumer
-guidance: useful engine fixes, no new `go-sqlite` promise yet.
+`v0.7.0-pre.2`, `v0.7.0-pre.4`, `v0.7.0-pre.5`, and `v0.7.0-pre.6` labs keep the
+same consumer guidance: useful engine fixes, no new `go-sqlite` promise yet.
 
 | Feature | Consumer rule |
 |---|---|
 | `WITHOUT ROWID` | Plain Turso can use it only with `?experimental=without_rowid`. `go-sqlite` requires normal rowid tables and rejects `WITHOUT ROWID` schemas. |
 | MVCC writes | `database.Open` uses Turso MVCC by default. Use `ConcurrentTxRetry` / `BEGIN CONCURRENT` on one reserved connection for multi-statement concurrent writes. |
 | Live CLI inspection | Use `db?experimental=multiprocess_wal` in the Go app and `tursodb --experimental-multiprocess-wal db ...` in the CLI. |
-| Concurrent Go writer processes | Not a promise. The labs still see WAL file-locking with multiple Go child writers through `tursogo v0.6.0`, `v0.6.1`, `v0.7.0-pre.2`, `v0.7.0-pre.4`, and `v0.7.0-pre.5`. |
+| Concurrent Go writer processes | Not a promise. The labs still see WAL file-locking with multiple Go child writers through `tursogo v0.6.0`, `v0.6.1`, `v0.7.0-pre.2`, `v0.7.0-pre.4`, `v0.7.0-pre.5`, and `v0.7.0-pre.6`. |
+
+## Process layout
+
+Organize write processes by database file. One process can own one file, and
+many such processes can write in parallel because they do not share a WAL file.
+That is the boring layout, which is exactly why it is the right one.
+
+Do not run several independent Go writer processes against the same physical
+database file and expect `experimental=multiprocess_wal` to make it safe. The
+flag is useful for live inspection with the matching `tursodb` binary, and it
+may coordinate readers and writers in Turso's engine path, but our Go-driver
+labs still see WAL file-locking when several Go processes write the same file at
+the same time.
+
+Use this split:
+
+| Shape | Status | Rule |
+|---|---|---|
+| One Go process, one DB file, many goroutines/connections | supported by lab evidence | Use MVCC and `ConcurrentTxRetry` for multi-statement writes. |
+| Many Go processes, each with its own DB file | supported by isolation | Good process layout for per-tenant, per-customer, or per-worker files. |
+| One Go process plus matching `tursodb` inspecting the same file | supported by pre6 optional lab | Use `experimental=multiprocess_wal` in the app DSN and `--experimental-multiprocess-wal` in the CLI. |
+| Many Go processes writing the same DB file | not supported by this package | Route writes through one owner process, split the files, or add an app-level queue. |
 
 ## Upgrade checklist for apps
 
@@ -38,6 +60,7 @@ guidance: useful engine fixes, no new `go-sqlite` promise yet.
    with the matching `tursodb` release and `--experimental-multiprocess-wal`.
 
 The lab evidence lives in `lab/turso-v060`, `lab/turso-v061`,
-`lab/turso-v070-pre2`, `lab/turso-v070-pre4`, and `lab/turso-v070-pre5`. It is
+`lab/turso-v070-pre2`, `lab/turso-v070-pre4`, `lab/turso-v070-pre5`, and
+`lab/turso-v070-pre6`. It is
 intentionally not part of `pkg/` because it tests upstream behavior we may or
 may not wrap.

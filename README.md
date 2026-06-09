@@ -201,7 +201,7 @@ db, _ := database.Open(ctx, "app.db", database.WithConfig(cfg))
 
 ### Turso MVCC
 
-Turso 0.6.0 added experimental plain-engine `WITHOUT ROWID` support behind `?experimental=without_rowid`, and the current 0.6.1 / 0.7.0-pre.2 / 0.7.0-pre.4 / 0.7.0-pre.5 labs keep the same boundary: MVCC still rejects writes to those tables. This package requires normal rowid tables. `database.Open` validates existing schema, `database.Exec` rejects `WITHOUT ROWID` SQL, and the migration runner validates the schema after each migration. Rebuild existing plain SQLite databases into normal rowid tables before opening them with this package. The current probes live in `lab/turso-v060`, `lab/turso-v061`, `lab/turso-v070-pre2`, `lab/turso-v070-pre4`, and `lab/turso-v070-pre5`.
+Turso 0.6.0 added experimental plain-engine `WITHOUT ROWID` support behind `?experimental=without_rowid`, and the current 0.6.1 / 0.7.0-pre.2 / 0.7.0-pre.4 / 0.7.0-pre.5 / 0.7.0-pre.6 labs keep the same boundary: MVCC still rejects writes to those tables. This package requires normal rowid tables. `database.Open` validates existing schema, `database.Exec` rejects `WITHOUT ROWID` SQL, and the migration runner validates the schema after each migration. Rebuild existing plain SQLite databases into normal rowid tables before opening them with this package. The current probes live in `lab/turso-v060`, `lab/turso-v061`, `lab/turso-v070-pre2`, `lab/turso-v070-pre4`, `lab/turso-v070-pre5`, and `lab/turso-v070-pre6`.
 
 Install `tursodb` anywhere operators or tests run or inspect database files:
 
@@ -221,6 +221,13 @@ inspect the live file on the owning host.
 tursodb app.db "PRAGMA integrity_check;"
 tursodb --experimental-multiprocess-wal app.db ".tables"
 ```
+
+Process layout matters. One Go process can own one database file and use MVCC
+with a normal connection pool. Many processes can write in parallel when each
+process owns a different file, because there is no shared WAL file to lock.
+Several Go writer processes against the same physical file are not a supported
+shape here; route those writes through one owner process, split the files, or
+put an app-level queue in front of the file.
 
 For lower-level code, use `database.ConcurrentTx` or `database.ConcurrentTxRetry`:
 
