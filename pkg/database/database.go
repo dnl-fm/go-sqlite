@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"sort"
+	"strings"
 	"sync"
 )
 
@@ -62,8 +63,10 @@ func Open(ctx context.Context, path string, opts ...Option) (*Database, error) {
 	db.config.Driver = DefaultDriver
 	db.config.WithPragma("journal_mode", "'mvcc'")
 
+	openPath := normalizeTursoDSN(path, db.config)
+
 	// Open database connection using configured driver
-	sqlDB, err := sql.Open(db.config.Driver, path)
+	sqlDB, err := sql.Open(db.config.Driver, openPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
@@ -216,6 +219,35 @@ func (d *Database) Close() error {
 // Path returns the database file path
 func (d *Database) Path() string {
 	return d.path
+}
+
+func normalizeTursoDSN(path string, cfg *Config) string {
+	if cfg == nil || !cfg.EnableMultiprocessWAL {
+		return path
+	}
+	if !shouldEnableMultiprocessWAL(path) {
+		return path
+	}
+	if strings.Contains(path, "experimental=multiprocess_wal") {
+		return path
+	}
+
+	separator := "?"
+	if strings.Contains(path, "?") {
+		separator = "&"
+	}
+	return path + separator + "experimental=multiprocess_wal"
+}
+
+func shouldEnableMultiprocessWAL(path string) bool {
+	if path == "" || strings.Contains(path, ":memory:") {
+		return false
+	}
+
+	lower := strings.ToLower(path)
+	return !strings.HasPrefix(lower, "http://") &&
+		!strings.HasPrefix(lower, "https://") &&
+		!strings.HasPrefix(lower, "libsql://")
 }
 
 // Config returns the current configuration

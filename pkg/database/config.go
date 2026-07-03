@@ -11,22 +11,24 @@ const DefaultDriver = turso.DriverName
 
 // Config holds database connection pool and pragma settings
 type Config struct {
-	Pragmas         map[string]string
-	PragmaOrder     []string
-	StrictPragmas   bool
-	Driver          string
-	ConnMaxLifetime time.Duration
-	MaxOpenConns    int
-	MaxIdleConns    int
+	Pragmas               map[string]string
+	PragmaOrder           []string
+	StrictPragmas         bool
+	Driver                string
+	EnableMultiprocessWAL bool
+	ConnMaxLifetime       time.Duration
+	MaxOpenConns          int
+	MaxIdleConns          int
 }
 
 // DefaultConfig returns the standard Turso MVCC configuration.
 func DefaultConfig() *Config {
 	return &Config{
-		Driver:          DefaultDriver,
-		MaxOpenConns:    32,
-		MaxIdleConns:    16,
-		ConnMaxLifetime: time.Hour,
+		Driver:                DefaultDriver,
+		EnableMultiprocessWAL: true,
+		MaxOpenConns:          32,
+		MaxIdleConns:          16,
+		ConnMaxLifetime:       time.Hour,
 		PragmaOrder: []string{
 			"journal_mode",
 			"foreign_keys",
@@ -120,5 +122,19 @@ func (c *Config) WithPragmaOrder(keys ...string) *Config {
 // WithStrictPragmas makes Open fail if any configured PRAGMA cannot be applied.
 func (c *Config) WithStrictPragmas(strict bool) *Config {
 	c.StrictPragmas = strict
+	return c
+}
+
+// WithMultiprocessWAL controls Turso's experimental multiprocess WAL DSN flag.
+//
+// It is enabled by default for file-backed local databases so operators can
+// inspect a live app database with:
+//
+//	tursodb --experimental-multiprocess-wal app.db ...
+//
+// The flag does not make multiple Go writer processes safe. It is for live
+// inspection and matching tursodb access.
+func (c *Config) WithMultiprocessWAL(enabled bool) *Config {
+	c.EnableMultiprocessWAL = enabled
 	return c
 }

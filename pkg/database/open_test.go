@@ -63,6 +63,59 @@ func TestOpen(t *testing.T) {
 	})
 }
 
+func TestNormalizeTursoDSN(t *testing.T) {
+	t.Run("enables multiprocess wal for plain file path", func(t *testing.T) {
+		got := normalizeTursoDSN("app.db", DefaultConfig())
+		want := "app.db?experimental=multiprocess_wal"
+		if got != want {
+			t.Fatalf("expected %q, got %q", want, got)
+		}
+	})
+
+	t.Run("preserves existing query parameters", func(t *testing.T) {
+		got := normalizeTursoDSN("app.db?_busy_timeout=5000", DefaultConfig())
+		want := "app.db?_busy_timeout=5000&experimental=multiprocess_wal"
+		if got != want {
+			t.Fatalf("expected %q, got %q", want, got)
+		}
+	})
+
+	t.Run("does not duplicate multiprocess wal flag", func(t *testing.T) {
+		path := "app.db?experimental=multiprocess_wal&_busy_timeout=5000"
+		got := normalizeTursoDSN(path, DefaultConfig())
+		if got != path {
+			t.Fatalf("expected %q, got %q", path, got)
+		}
+	})
+
+	t.Run("leaves in-memory databases alone", func(t *testing.T) {
+		for _, path := range []string{":memory:", "file::memory:?cache=shared"} {
+			got := normalizeTursoDSN(path, DefaultConfig())
+			if got != path {
+				t.Fatalf("expected %q, got %q", path, got)
+			}
+		}
+	})
+
+	t.Run("leaves remote database urls alone", func(t *testing.T) {
+		for _, path := range []string{"https://example.turso.io", "libsql://example.turso.io"} {
+			got := normalizeTursoDSN(path, DefaultConfig())
+			if got != path {
+				t.Fatalf("expected %q, got %q", path, got)
+			}
+		}
+	})
+
+	t.Run("can be disabled", func(t *testing.T) {
+		cfg := DefaultConfig().WithMultiprocessWAL(false)
+		got := normalizeTursoDSN("app.db", cfg)
+		want := "app.db"
+		if got != want {
+			t.Fatalf("expected %q, got %q", want, got)
+		}
+	})
+}
+
 func TestWithDriver(t *testing.T) {
 	t.Run("keeps Turso MVCC driver", func(t *testing.T) {
 		ctx := context.Background()

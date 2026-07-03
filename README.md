@@ -178,6 +178,7 @@ no supported old-WAL mode in this package.
 | PRAGMA | Default | Purpose |
 |--------|---------|---------|
 | `journal_mode` | `'mvcc'` | Concurrent writes across pooled connections |
+| DSN feature | `experimental=multiprocess_wal` | Live inspection with matching `tursodb` |
 | `synchronous` | `NORMAL` | Balanced durability/speed |
 | `foreign_keys` | `ON` | Enforce referential integrity |
 | `busy_timeout` | `1000` | Wait before locked error |
@@ -199,9 +200,21 @@ cfg := database.DefaultConfig().WithPragma("cache_size", "-64000")
 db, _ := database.Open(ctx, "app.db", database.WithConfig(cfg))
 ```
 
+For local file databases, `database.Open(ctx, "app.db")` enables Turso's
+`experimental=multiprocess_wal` DSN flag by default. That is what lets a
+running app keep the DB open while operators inspect it with:
+
+```bash
+tursodb --experimental-multiprocess-wal app.db ".tables"
+```
+
+This is an inspection feature, not a multi-writer-process promise. Keep one app
+process owning writes. See [Turso Operations](docs/turso-operations.md) for the
+full operator rule.
+
 ### Turso MVCC
 
-Turso 0.6.0 added experimental plain-engine `WITHOUT ROWID` support behind `?experimental=without_rowid`, and the current 0.6.1 / 0.7.0-pre.2 / 0.7.0-pre.4 / 0.7.0-pre.5 / 0.7.0-pre.6 labs keep the same boundary: MVCC still rejects writes to those tables. This package requires normal rowid tables. `database.Open` validates existing schema, `database.Exec` rejects `WITHOUT ROWID` SQL, and the migration runner validates the schema after each migration. Rebuild existing plain SQLite databases into normal rowid tables before opening them with this package. The current probes live in `lab/turso-v060`, `lab/turso-v061`, `lab/turso-v070-pre2`, `lab/turso-v070-pre4`, `lab/turso-v070-pre5`, and `lab/turso-v070-pre6`.
+Turso 0.6.0 added experimental plain-engine `WITHOUT ROWID` support behind `?experimental=without_rowid`, and the current 0.6.1 / 0.7.0-pre.2 / 0.7.0-pre.4 / 0.7.0-pre.5 / 0.7.0-pre.6 / 0.7.0-pre.10 / 0.7.0-pre.13 labs keep the same boundary: MVCC still rejects writes to those tables. This package requires normal rowid tables. `database.Open` validates existing schema, `database.Exec` rejects `WITHOUT ROWID` SQL, and the migration runner validates the schema after each migration. Rebuild existing plain SQLite databases into normal rowid tables before opening them with this package. The current probes live in `lab/turso-v060`, `lab/turso-v061`, `lab/turso-v070-pre2`, `lab/turso-v070-pre4`, `lab/turso-v070-pre5`, `lab/turso-v070-pre6`, `lab/turso-v070-pre10`, and `lab/turso-v070-pre13`.
 
 Install `tursodb` anywhere operators or tests run or inspect database files:
 
