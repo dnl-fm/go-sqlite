@@ -11,10 +11,12 @@ const DefaultDriver = turso.DriverName
 
 // Config holds database connection pool and pragma settings
 type Config struct {
-	Pragmas               map[string]string
-	PragmaOrder           []string
-	StrictPragmas         bool
-	Driver                string
+	Pragmas       map[string]string
+	PragmaOrder   []string
+	StrictPragmas bool
+	Driver        string
+	// Deprecated: multiprocess WAL is incompatible with go-sqlite's MVCC
+	// contract. Setting this field makes Open fail.
 	EnableMultiprocessWAL bool
 	ConnMaxLifetime       time.Duration
 	MaxOpenConns          int
@@ -24,11 +26,18 @@ type Config struct {
 // DefaultConfig returns the standard Turso MVCC configuration.
 func DefaultConfig() *Config {
 	return &Config{
-		Driver:                DefaultDriver,
-		EnableMultiprocessWAL: true,
-		MaxOpenConns:          32,
-		MaxIdleConns:          16,
-		ConnMaxLifetime:       time.Hour,
+		Driver: DefaultDriver,
+		// Every native turso connection carries its own page cache — ~25 MB
+		// against a 300 MB database. A pool of 32 is therefore ~800 MB of
+		// native memory once concurrent load fills it, and hourly recycling
+		// leaks more (native memory is not returned on connection close).
+		// That combination OOM-crashlooped prod maild on 2026-08-06 until
+		// its pool was capped at 4 (mailbox-go 473a893, concurrent repro in
+		// its internal/store). Keep the pool small and stable: turso apps
+		// here are single-owner and their queries are milliseconds.
+		MaxOpenConns:    4,
+		MaxIdleConns:    4,
+		ConnMaxLifetime: 0,
 		PragmaOrder: []string{
 			"journal_mode",
 			"foreign_keys",
@@ -63,7 +72,7 @@ func ProductionConfig() *Config {
 // TursoMVCCConfig returns a Turso configuration for concurrent write workloads.
 //
 // MVCC mode allows BEGIN CONCURRENT transactions to overlap across connections
-// and processes writing to the same database file.
+// in the one process that owns the database file.
 //
 // Turso MVCC does not support writes to WITHOUT ROWID tables. Schemas used with
 // this config must use normal rowid tables.
@@ -125,15 +134,10 @@ func (c *Config) WithStrictPragmas(strict bool) *Config {
 	return c
 }
 
-// WithMultiprocessWAL controls Turso's experimental multiprocess WAL DSN flag.
+// WithMultiprocessWAL is kept for source compatibility.
 //
-// It is enabled by default for file-backed local databases so operators can
-// inspect a live app database with:
-//
-//	tursodb --experimental-multiprocess-wal app.db ...
-//
-// The flag does not make multiple Go writer processes safe. It is for live
-// inspection and matching tursodb access.
+// Deprecated: multiprocess WAL is incompatible with go-sqlite's MVCC contract.
+// Setting this option to true makes Open fail.
 func (c *Config) WithMultiprocessWAL(enabled bool) *Config {
 	c.EnableMultiprocessWAL = enabled
 	return c

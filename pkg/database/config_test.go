@@ -10,44 +10,63 @@ import (
 func TestConfigDefaults(t *testing.T) {
 	cfg := DefaultConfig()
 
-	if cfg.MaxOpenConns != 32 {
-		t.Errorf("expected MaxOpenConns 32, got %d", cfg.MaxOpenConns)
+	if cfg.MaxOpenConns != 4 {
+		t.Errorf("expected MaxOpenConns 4, got %d", cfg.MaxOpenConns)
 	}
 
-	if cfg.MaxIdleConns != 16 {
-		t.Errorf("expected MaxIdleConns 16, got %d", cfg.MaxIdleConns)
+	if cfg.MaxIdleConns != 4 {
+		t.Errorf("expected MaxIdleConns 4, got %d", cfg.MaxIdleConns)
 	}
 
-	if cfg.ConnMaxLifetime != time.Hour {
-		t.Errorf("expected ConnMaxLifetime 1h, got %v", cfg.ConnMaxLifetime)
+	if cfg.ConnMaxLifetime != 0 {
+		t.Errorf("expected ConnMaxLifetime 0, got %v", cfg.ConnMaxLifetime)
 	}
 
 	if cfg.Pragmas["journal_mode"] != "'mvcc'" {
 		t.Errorf("expected journal_mode 'mvcc', got %s", cfg.Pragmas["journal_mode"])
+	}
+
+	if cfg.EnableMultiprocessWAL {
+		t.Error("DefaultConfig must not enable multiprocess WAL")
 	}
 }
 
 func TestConfigDevelopment(t *testing.T) {
 	cfg := DevelopmentConfig()
 
-	if cfg.MaxOpenConns != 32 {
-		t.Errorf("expected MaxOpenConns 32, got %d", cfg.MaxOpenConns)
+	if cfg.MaxOpenConns != 4 {
+		t.Errorf("expected MaxOpenConns 4, got %d", cfg.MaxOpenConns)
 	}
 
 	if cfg.Pragmas["journal_mode"] != "'mvcc'" {
 		t.Errorf("expected journal_mode 'mvcc', got %s", cfg.Pragmas["journal_mode"])
+	}
+
+	if cfg.EnableMultiprocessWAL {
+		t.Error("DevelopmentConfig must not enable multiprocess WAL")
 	}
 }
 
 func TestConfigProduction(t *testing.T) {
 	cfg := ProductionConfig()
 
-	if cfg.MaxOpenConns != 32 {
-		t.Errorf("expected MaxOpenConns 32, got %d", cfg.MaxOpenConns)
+	if cfg.MaxOpenConns != 4 {
+		t.Errorf("expected MaxOpenConns 4, got %d", cfg.MaxOpenConns)
 	}
 
 	if cfg.Pragmas["foreign_keys"] != "ON" {
 		t.Errorf("expected foreign_keys ON, got %s", cfg.Pragmas["foreign_keys"])
+	}
+
+	if cfg.EnableMultiprocessWAL {
+		t.Error("ProductionConfig must not enable multiprocess WAL")
+	}
+}
+
+func TestTursoMVCCConfigDoesNotEnableMultiprocessWAL(t *testing.T) {
+	cfg := TursoMVCCConfig()
+	if cfg.EnableMultiprocessWAL {
+		t.Error("TursoMVCCConfig must not enable multiprocess WAL")
 	}
 }
 
