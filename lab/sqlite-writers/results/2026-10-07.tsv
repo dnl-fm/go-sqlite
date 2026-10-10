@@ -1,0 +1,2 @@
+workload	strategy	ops	busy	other	lost	ops_per_s	write_p50_ms	write_p99_ms	write_max_ms	read_p50_ms	read_p99_ms	wal_mb	first_busy	first_other
+long-tx	E multi-process	301	6	0	0	30	100.64	5098.38	5121.61	0.02	0.06	2.4	write: database is locked (5) (SQLITE_BUSY)	

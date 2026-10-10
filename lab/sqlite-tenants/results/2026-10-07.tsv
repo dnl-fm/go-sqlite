@@ -1,0 +1,122 @@
+scenario	metric	value	unit
+run	start	2026-10-07T19:27:07+02:00	
+run	end	2026-10-07T19:30:44+02:00	
+run	wall	217.8	s
+run	go	go1.26.5	
+run	modernc.org/sqlite	v1.60.1	
+run	cpus	16	
+run	race detector	false	
+03-lru	max open (configured)	8	tenants
+03-lru	peak open (manager counter)	8	tenants
+03-lru	peak open (distinct .db in /proc/self/fd)	8	tenants
+03-lru	kernel samples taken	11247	
+03-lru	evictions	1791	
+03-lru	failed operations	0	
+04-scaling	writes per run (64 writers)	32000	writes
+04-scaling	16 tenants x 4 writers	122364.84	writes/s
+04-scaling	1 database x 64 writers	19926.14	writes/s
+04-scaling	speedup	6.14	x
+05-noisy	neighbor write transaction	100.00	ms
+05-noisy	other tenants write p50	0.02	ms
+05-noisy	other tenants write p99	0.09	ms
+05-noisy	other tenants write max	0.18	ms
+05-noisy	same tenant write max	100.33	ms
+07-backup	backup 0 under 4 writers	34.08	ms
+07-backup	backup 1 under 4 writers	46.45	ms
+07-backup	backup 2 under 4 writers	29.41	ms
+07-backup	acme-0 rows (live before / copy / live after)	2676 / 2679 / 3123	rows
+07-backup	acme-1 rows (live before / copy / live after)	3129 / 3129 / 3681	rows
+07-backup	acme-2 rows (live before / copy / live after)	4389 / 4392 / 4764	rows
+08-crash	commits acknowledged before SIGKILL	300	tx
+08-crash	transactions present after reopen	300	tx
+08-crash	WAL size at reopen	1330792	bytes
+09-attach	databases attached before the limit	10	databases
+09-attach	error on the next ATTACH	SQL logic error: too many attached databases - max 10 (1)	
+10-create	tenants created	1000	tenants
+10-create	wall, 16 creators	5.58	s
+10-create	create p50	90.22	ms
+10-create	create p99	100.53	ms
+10-create	disk, one open empty tenant: .db	4096	bytes
+10-create	disk, one open empty tenant: .db-wal	8272	bytes
+10-create	disk, one open empty tenant: .db-shm	32768	bytes
+10-create	disk per empty tenant, closed: file size	8192	bytes
+10-create	disk per empty tenant, closed: allocated	8192	bytes
+10-fds	fds, tenant open, writer only	3	fds
+10-fds	fds, writer + 4 busy readers (peak)	11	fds
+10-fds	fds, after the readers go idle	9	fds
+10-migrate	MigrateAll, 1 step, concurrency 1: wall	23.06	s
+10-migrate	MigrateAll, 1 step, concurrency 1: rate	43.37	tenants/s
+10-migrate	MigrateAll, 1 step, concurrency 8: wall	7.22	s
+10-migrate	MigrateAll, 1 step, concurrency 8: rate	138.52	tenants/s
+10-migrate	MigrateAll, 1 step, concurrency 32: wall	2.06	s
+10-migrate	MigrateAll, 1 step, concurrency 32: rate	485.28	tenants/s
+10-migrate	MigrateAll, nothing to do, concurrency 32: wall	0.14	s
+10-open-10	tenants open at once	10	tenants
+10-open-10	RssAnon, nothing open	2580	kB
+10-open-10	RssAnon, all open, each read once	5184	kB
+10-open-10	RssAnon per open tenant, each read once	260.40	kB
+10-open-10	fds per open tenant, each read once	5.00	fds
+10-open-10	cold open + first query, cache has room p50	0.45	ms
+10-open-10	cold open + first query, cache has room p99	0.71	ms
+10-open-10	cold open + first query, evicting a read-only tenant p50	0.40	ms
+10-open-10	cold open + first query, evicting a read-only tenant p99	0.55	ms
+10-open-10	RssAnon, all open, each written once	7236	kB
+10-open-10	RssAnon per open tenant, each written once	465.60	kB
+10-open-10	fds per open tenant, each written once	5.00	fds
+10-open-10	warm query p50	0.01	ms
+10-open-10	warm query p99	0.02	ms
+10-open-10	cold open + first query, evicting a written tenant p50	10.20	ms
+10-open-10	cold open + first query, evicting a written tenant p99	21.46	ms
+10-open-10	RssAnon, after Close	7100	kB
+10-open-100	tenants open at once	100	tenants
+10-open-100	RssAnon, nothing open	2632	kB
+10-open-100	RssAnon, all open, each read once	26392	kB
+10-open-100	RssAnon per open tenant, each read once	237.60	kB
+10-open-100	fds per open tenant, each read once	5.00	fds
+10-open-100	cold open + first query, cache has room p50	0.38	ms
+10-open-100	cold open + first query, cache has room p99	17.21	ms
+10-open-100	cold open + first query, evicting a read-only tenant p50	0.34	ms
+10-open-100	cold open + first query, evicting a read-only tenant p99	0.54	ms
+10-open-100	RssAnon, all open, each written once	29500	kB
+10-open-100	RssAnon per open tenant, each written once	268.68	kB
+10-open-100	fds per open tenant, each written once	5.00	fds
+10-open-100	warm query p50	0.01	ms
+10-open-100	warm query p99	0.02	ms
+10-open-100	cold open + first query, evicting a written tenant p50	10.20	ms
+10-open-100	cold open + first query, evicting a written tenant p99	25.98	ms
+10-open-100	RssAnon, after Close	11640	kB
+10-open-1000	tenants open at once	1000	tenants
+10-open-1000	RssAnon, nothing open	2624	kB
+10-open-1000	RssAnon, all open, each read once	231220	kB
+10-open-1000	RssAnon per open tenant, each read once	228.60	kB
+10-open-1000	fds per open tenant, each read once	5.00	fds
+10-open-1000	cold open + first query, cache has room p50	0.43	ms
+10-open-1000	cold open + first query, cache has room p99	0.73	ms
+10-open-1000	RssAnon, all open, each written once	245456	kB
+10-open-1000	RssAnon per open tenant, each written once	242.83	kB
+10-open-1000	fds per open tenant, each written once	5.00	fds
+10-open-1000	warm query p50	0.02	ms
+10-open-1000	warm query p99	0.04	ms
+10-open-1000	RssAnon, after Close	32308	kB
+10-random-uniform	tenants / MaxOpen / workers	1000 / 64 / 16	
+10-random-uniform	duration	60.04	s
+10-random-uniform	requests (1 read tx + 1 write tx)	21467	requests
+10-random-uniform	throughput	357.57	requests/s
+10-random-uniform	cache hit rate	6.25	%
+10-random-uniform	evictions	20062	
+10-random-uniform	request p50	47.99	ms
+10-random-uniform	request p99	55.04	ms
+10-random-uniform	request max	90.21	ms
+10-random-uniform	peak open	64	tenants
+10-random-uniform	failed requests	0	
+10-random-zipf-1.1	tenants / MaxOpen / workers	1000 / 64 / 16	
+10-random-zipf-1.1	duration	60.06	s
+10-random-zipf-1.1	requests (1 read tx + 1 write tx)	39353	requests
+10-random-zipf-1.1	throughput	655.25	requests/s
+10-random-zipf-1.1	cache hit rate	59.08	%
+10-random-zipf-1.1	evictions	16040	
+10-random-zipf-1.1	request p50	0.25	ms
+10-random-zipf-1.1	request p99	72.27	ms
+10-random-zipf-1.1	request max	202.66	ms
+10-random-zipf-1.1	peak open	64	tenants
+10-random-zipf-1.1	failed requests	0	

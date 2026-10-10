@@ -1,4 +1,4 @@
-.PHONY: help build consumer-build consumer-scan test lab-test lab-memory lint backpressure check check-dev rabbit-check rabbit-check-dev rabbit-review file-size test-cover test-verbose install-hooks clean migrate-build migrate-up migrate-down migrate-status migrate-create
+.PHONY: help build consumer-build consumer-scan test lab-test lab-memory lab-writers lab-tenants lint backpressure check check-dev rabbit-check rabbit-check-dev rabbit-review file-size test-cover test-verbose install-hooks clean migrate-build migrate-up migrate-down migrate-status migrate-create
 
 TURSO_VERSIONS ?= v0.7.2 v0.8.1
 
@@ -12,8 +12,10 @@ help:
 	@echo "  make consumer-build  Build the consumer scanner"
 	@echo "  make consumer-scan   Scan CONSUMER_ROOT for go-sqlite users"
 	@echo "  make test            Run package tests"
-	@echo "  make lab-test        Run exploratory Turso labs"
+	@echo "  make lab-test        Run exploratory labs (short mode)"
 	@echo "  make lab-memory      Reproduce Turso native-memory issues per version"
+	@echo "  make lab-writers     Full SQLite writer scenarios: patterns, WAL, load (slow)"
+	@echo "  make lab-tenants     Full SQLite tenant-per-database scenarios (slow)"
 	@echo "  make lint            Run deterministic lint checks"
 	@echo "  make backpressure    Run local quality backpressure"
 	@echo "  make check           Run full repository checks"
@@ -46,7 +48,11 @@ test:
 lab-memory:
 	@cd lab/turso-memory && ./run.sh $(TURSO_VERSIONS)
 
+lab-writers:
+	@cd lab/sqlite-writers && LAB_FULL=1 GOWORK=off go test -count=1 -run Scenario -v -timeout 90m ./...
 
+lab-tenants:
+	@cd lab/sqlite-tenants && LAB_FULL=1 GOWORK=off go test -count=1 -run Scenario -v -timeout 30m ./...
 
 lab-test:
 	@echo ""
@@ -61,6 +67,8 @@ lab-test:
 	@cd lab/turso-v070 && GOWORK=off go test ./...
 	@cd lab/turso-v071 && GOWORK=off go test ./...
 	@cd lab/turso-v072 && GOWORK=off go test ./...
+	@cd lab/sqlite-writers && GOWORK=off go test ./...
+	@cd lab/sqlite-tenants && GOWORK=off go test ./...
 	@echo ""
 
 lint:

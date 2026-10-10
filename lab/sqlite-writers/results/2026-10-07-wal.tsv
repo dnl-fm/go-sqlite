@@ -1,0 +1,361 @@
+variant	second	wal_mb
+C split	1	3.9
+C split	2	3.9
+C split	3	3.9
+C split	4	3.9
+C split	5	3.9
+C split	6	3.9
+C split	7	3.9
+C split	8	3.9
+C split	9	3.9
+C split	10	3.9
+C split	11	3.9
+C split	12	4.0
+C split	13	4.0
+C split	14	4.0
+C split	15	4.0
+C split	16	4.0
+C split	17	4.0
+C split	18	4.0
+C split	19	4.0
+C split	20	4.0
+C split	21	4.0
+C split	22	4.0
+C split	23	4.0
+C split	24	4.0
+C split	25	4.0
+C split	26	4.0
+C split	27	4.0
+C split	28	4.0
+C split	29	4.0
+C split	30	4.0
+C split	31	4.0
+C split	32	4.0
+C split	33	4.0
+C split	34	4.0
+C split	35	4.0
+C split	36	4.0
+C split	37	4.0
+C split	38	4.0
+C split	39	4.0
+C split	40	4.0
+C split	41	4.0
+C split	42	4.0
+C split	43	4.0
+C split	44	4.0
+C split	45	4.1
+C split	46	4.1
+C split	47	4.1
+C split	48	4.1
+C split	49	4.1
+C split	50	4.1
+C split	51	4.1
+C split	52	4.1
+C split	53	4.1
+C split	54	4.1
+C split	55	4.1
+C split	56	4.1
+C split	57	4.1
+C split	58	4.1
+C split	59	4.1
+C split	60	4.1
+C split, readers never pause	1	3.9
+C split, readers never pause	2	4.0
+C split, readers never pause	3	4.0
+C split, readers never pause	4	4.0
+C split, readers never pause	5	4.0
+C split, readers never pause	6	4.0
+C split, readers never pause	7	4.0
+C split, readers never pause	8	4.0
+C split, readers never pause	9	4.0
+C split, readers never pause	10	4.0
+C split, readers never pause	11	4.0
+C split, readers never pause	12	4.1
+C split, readers never pause	13	4.1
+C split, readers never pause	14	4.1
+C split, readers never pause	15	4.1
+C split, readers never pause	16	4.1
+C split, readers never pause	17	4.1
+C split, readers never pause	18	4.1
+C split, readers never pause	19	4.4
+C split, readers never pause	20	4.4
+C split, readers never pause	21	4.4
+C split, readers never pause	22	4.4
+C split, readers never pause	23	4.4
+C split, readers never pause	24	4.4
+C split, readers never pause	25	4.7
+C split, readers never pause	26	4.7
+C split, readers never pause	27	4.7
+C split, readers never pause	28	4.7
+C split, readers never pause	29	4.7
+C split, readers never pause	30	4.8
+C split, readers never pause	31	5.1
+C split, readers never pause	32	5.1
+C split, readers never pause	33	5.1
+C split, readers never pause	34	5.1
+C split, readers never pause	35	5.1
+C split, readers never pause	36	5.3
+C split, readers never pause	37	5.3
+C split, readers never pause	38	5.3
+C split, readers never pause	39	5.3
+C split, readers never pause	40	5.6
+C split, readers never pause	41	5.6
+C split, readers never pause	42	5.9
+C split, readers never pause	43	6.1
+C split, readers never pause	44	6.1
+C split, readers never pause	45	6.1
+C split, readers never pause	46	6.1
+C split, readers never pause	47	6.2
+C split, readers never pause	48	7.1
+C split, readers never pause	49	7.1
+C split, readers never pause	50	7.1
+C split, readers never pause	51	7.1
+C split, readers never pause	52	7.1
+C split, readers never pause	53	7.1
+C split, readers never pause	54	7.1
+C split, readers never pause	55	7.1
+C split, readers never pause	56	7.3
+C split, readers never pause	57	7.3
+C split, readers never pause	58	7.5
+C split, readers never pause	59	9.2
+C split, readers never pause	60	9.5
+C split, one read tx held open	1	14.7
+C split, one read tx held open	2	29.9
+C split, one read tx held open	3	45.5
+C split, one read tx held open	4	60.7
+C split, one read tx held open	5	75.9
+C split, one read tx held open	6	91.1
+C split, one read tx held open	7	106.3
+C split, one read tx held open	8	121.5
+C split, one read tx held open	9	136.7
+C split, one read tx held open	10	152.0
+C split, one read tx held open	11	167.0
+C split, one read tx held open	12	182.4
+C split, one read tx held open	13	197.8
+C split, one read tx held open	14	213.4
+C split, one read tx held open	15	228.8
+C split, one read tx held open	16	244.0
+C split, one read tx held open	17	259.5
+C split, one read tx held open	18	274.9
+C split, one read tx held open	19	290.7
+C split, one read tx held open	20	306.2
+C split, one read tx held open	21	321.5
+C split, one read tx held open	22	337.1
+C split, one read tx held open	23	352.6
+C split, one read tx held open	24	368.2
+C split, one read tx held open	25	383.8
+C split, one read tx held open	26	399.2
+C split, one read tx held open	27	414.9
+C split, one read tx held open	28	430.5
+C split, one read tx held open	29	446.0
+C split, one read tx held open	30	461.4
+C split, one read tx held open	31	476.8
+C split, one read tx held open	32	492.3
+C split, one read tx held open	33	507.4
+C split, one read tx held open	34	522.6
+C split, one read tx held open	35	537.6
+C split, one read tx held open	36	552.7
+C split, one read tx held open	37	568.3
+C split, one read tx held open	38	583.5
+C split, one read tx held open	39	598.7
+C split, one read tx held open	40	613.7
+C split, one read tx held open	41	628.9
+C split, one read tx held open	42	644.2
+C split, one read tx held open	43	659.6
+C split, one read tx held open	44	674.9
+C split, one read tx held open	45	689.9
+C split, one read tx held open	46	705.1
+C split, one read tx held open	47	720.4
+C split, one read tx held open	48	735.5
+C split, one read tx held open	49	750.6
+C split, one read tx held open	50	765.3
+C split, one read tx held open	51	780.2
+C split, one read tx held open	52	795.3
+C split, one read tx held open	53	810.2
+C split, one read tx held open	54	825.2
+C split, one read tx held open	55	840.0
+C split, one read tx held open	56	855.0
+C split, one read tx held open	57	870.1
+C split, one read tx held open	58	885.0
+C split, one read tx held open	59	900.2
+C split, one read tx held open	60	914.8
+B immediate (4 writer conns)	1	10.0
+B immediate (4 writer conns)	2	19.5
+B immediate (4 writer conns)	3	29.2
+B immediate (4 writer conns)	4	39.2
+B immediate (4 writer conns)	5	49.2
+B immediate (4 writer conns)	6	59.3
+B immediate (4 writer conns)	7	69.3
+B immediate (4 writer conns)	8	79.2
+B immediate (4 writer conns)	9	89.3
+B immediate (4 writer conns)	10	99.6
+B immediate (4 writer conns)	11	110.0
+B immediate (4 writer conns)	12	120.2
+B immediate (4 writer conns)	13	130.4
+B immediate (4 writer conns)	14	140.8
+B immediate (4 writer conns)	15	151.2
+B immediate (4 writer conns)	16	161.6
+B immediate (4 writer conns)	17	172.1
+B immediate (4 writer conns)	18	182.5
+B immediate (4 writer conns)	19	192.9
+B immediate (4 writer conns)	20	203.3
+B immediate (4 writer conns)	21	213.8
+B immediate (4 writer conns)	22	224.2
+B immediate (4 writer conns)	23	234.7
+B immediate (4 writer conns)	24	245.0
+B immediate (4 writer conns)	25	255.5
+B immediate (4 writer conns)	26	266.1
+B immediate (4 writer conns)	27	276.8
+B immediate (4 writer conns)	28	287.5
+B immediate (4 writer conns)	29	298.1
+B immediate (4 writer conns)	30	308.8
+B immediate (4 writer conns)	31	319.6
+B immediate (4 writer conns)	32	330.3
+B immediate (4 writer conns)	33	340.8
+B immediate (4 writer conns)	34	351.6
+B immediate (4 writer conns)	35	362.2
+B immediate (4 writer conns)	36	372.9
+B immediate (4 writer conns)	37	383.6
+B immediate (4 writer conns)	38	394.3
+B immediate (4 writer conns)	39	404.8
+B immediate (4 writer conns)	40	415.5
+B immediate (4 writer conns)	41	426.1
+B immediate (4 writer conns)	42	436.6
+B immediate (4 writer conns)	43	447.1
+B immediate (4 writer conns)	44	457.7
+B immediate (4 writer conns)	45	468.3
+B immediate (4 writer conns)	46	478.9
+B immediate (4 writer conns)	47	489.5
+B immediate (4 writer conns)	48	500.0
+B immediate (4 writer conns)	49	510.6
+B immediate (4 writer conns)	50	521.2
+B immediate (4 writer conns)	51	531.7
+B immediate (4 writer conns)	52	542.2
+B immediate (4 writer conns)	53	552.6
+B immediate (4 writer conns)	54	563.0
+B immediate (4 writer conns)	55	573.5
+B immediate (4 writer conns)	56	583.8
+B immediate (4 writer conns)	57	594.2
+B immediate (4 writer conns)	58	604.5
+B immediate (4 writer conns)	59	614.9
+B immediate (4 writer conns)	60	625.2
+B immediate + TRUNCATE checkpoint every 5s	1	10.0
+B immediate + TRUNCATE checkpoint every 5s	2	19.4
+B immediate + TRUNCATE checkpoint every 5s	3	29.4
+B immediate + TRUNCATE checkpoint every 5s	4	39.4
+B immediate + TRUNCATE checkpoint every 5s	5	49.4
+B immediate + TRUNCATE checkpoint every 5s	6	59.2
+B immediate + TRUNCATE checkpoint every 5s	7	69.1
+B immediate + TRUNCATE checkpoint every 5s	8	78.9
+B immediate + TRUNCATE checkpoint every 5s	9	89.2
+B immediate + TRUNCATE checkpoint every 5s	10	99.5
+B immediate + TRUNCATE checkpoint every 5s	11	109.6
+B immediate + TRUNCATE checkpoint every 5s	12	119.7
+B immediate + TRUNCATE checkpoint every 5s	13	130.1
+B immediate + TRUNCATE checkpoint every 5s	14	140.4
+B immediate + TRUNCATE checkpoint every 5s	15	150.7
+B immediate + TRUNCATE checkpoint every 5s	16	10.6
+B immediate + TRUNCATE checkpoint every 5s	17	21.1
+B immediate + TRUNCATE checkpoint every 5s	18	31.5
+B immediate + TRUNCATE checkpoint every 5s	19	42.0
+B immediate + TRUNCATE checkpoint every 5s	20	52.6
+B immediate + TRUNCATE checkpoint every 5s	21	63.1
+B immediate + TRUNCATE checkpoint every 5s	22	73.6
+B immediate + TRUNCATE checkpoint every 5s	23	84.1
+B immediate + TRUNCATE checkpoint every 5s	24	94.5
+B immediate + TRUNCATE checkpoint every 5s	25	104.9
+B immediate + TRUNCATE checkpoint every 5s	26	115.4
+B immediate + TRUNCATE checkpoint every 5s	27	126.0
+B immediate + TRUNCATE checkpoint every 5s	28	136.6
+B immediate + TRUNCATE checkpoint every 5s	29	147.2
+B immediate + TRUNCATE checkpoint every 5s	30	157.6
+B immediate + TRUNCATE checkpoint every 5s	31	168.2
+B immediate + TRUNCATE checkpoint every 5s	32	178.9
+B immediate + TRUNCATE checkpoint every 5s	33	189.5
+B immediate + TRUNCATE checkpoint every 5s	34	200.2
+B immediate + TRUNCATE checkpoint every 5s	35	210.5
+B immediate + TRUNCATE checkpoint every 5s	36	10.7
+B immediate + TRUNCATE checkpoint every 5s	37	21.5
+B immediate + TRUNCATE checkpoint every 5s	38	32.1
+B immediate + TRUNCATE checkpoint every 5s	39	42.7
+B immediate + TRUNCATE checkpoint every 5s	40	53.2
+B immediate + TRUNCATE checkpoint every 5s	41	63.7
+B immediate + TRUNCATE checkpoint every 5s	42	74.4
+B immediate + TRUNCATE checkpoint every 5s	43	85.2
+B immediate + TRUNCATE checkpoint every 5s	44	95.7
+B immediate + TRUNCATE checkpoint every 5s	45	106.5
+B immediate + TRUNCATE checkpoint every 5s	46	117.1
+B immediate + TRUNCATE checkpoint every 5s	47	127.7
+B immediate + TRUNCATE checkpoint every 5s	48	138.4
+B immediate + TRUNCATE checkpoint every 5s	49	148.8
+B immediate + TRUNCATE checkpoint every 5s	50	159.4
+B immediate + TRUNCATE checkpoint every 5s	51	170.1
+B immediate + TRUNCATE checkpoint every 5s	52	180.6
+B immediate + TRUNCATE checkpoint every 5s	53	191.0
+B immediate + TRUNCATE checkpoint every 5s	54	201.6
+B immediate + TRUNCATE checkpoint every 5s	55	212.0
+B immediate + TRUNCATE checkpoint every 5s	56	222.3
+B immediate + TRUNCATE checkpoint every 5s	57	232.6
+B immediate + TRUNCATE checkpoint every 5s	58	242.9
+B immediate + TRUNCATE checkpoint every 5s	59	253.1
+B immediate + TRUNCATE checkpoint every 5s	60	263.4
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	1	11.3
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	2	22.8
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	3	35.3
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	4	47.7
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	5	60.2
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	6	11.3
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	7	23.9
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	8	36.5
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	9	49.3
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	10	62.3
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	11	11.6
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	12	24.5
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	13	37.6
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	14	50.6
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	15	63.7
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	16	11.8
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	17	24.7
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	18	37.9
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	19	51.2
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	20	64.3
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	21	11.9
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	22	25.0
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	23	38.3
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	24	52.0
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	25	65.6
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	26	12.2
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	27	25.6
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	28	39.3
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	29	53.1
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	30	66.6
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	31	12.5
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	32	25.9
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	33	39.4
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	34	52.7
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	35	66.1
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	36	12.1
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	37	25.1
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	38	38.3
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	39	51.1
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	40	63.9
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	41	12.1
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	42	25.0
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	43	37.6
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	44	50.2
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	45	62.4
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	46	11.9
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	47	24.3
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	48	36.6
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	49	48.8
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	50	60.6
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	51	11.3
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	52	23.4
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	53	35.1
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	54	46.7
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	55	58.0
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	56	11.0
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	57	22.6
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	58	33.9
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	59	45.2
+B immediate, wal_autocheckpoint=0 + TRUNCATE checkpoint every 5s	60	56.7

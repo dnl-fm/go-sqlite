@@ -1,0 +1,18 @@
+workload	strategy	ops	busy	other	lost	ops_per_s	write_p50_ms	write_p99_ms	write_max_ms	read_p50_ms	read_p99_ms	wal_mb	first_busy	first_other
+inserts	A naive	160000	0	0	0	19412	0.30	6.14	629.13	0.99	8.70	1384.1		
+inserts	B immediate	160000	0	0	0	20351	0.28	5.81	1129.55	0.93	7.85	1383.0		
+inserts	C split	160000	0	0	0	7421	0.51	34.58	168.29	0.26	6.54	4.9		
+inserts	D queue	160000	0	0	0	6727	1.69	14.68	35.27	0.29	6.05	6.2		
+inserts	E multi-process	160000	0	0	0	30857	0.08	7.34	2444.75	0.26	1.76	782.4		
+inserts	C split (FULL)	8000	0	0	0	160	68.55	422.24	990.19	0.02	0.10	3.9		
+inserts	D queue (FULL)	8000	0	0	0	2008	7.66	14.67	26.30	0.02	0.10	4.0		
+counter	A naive	34252	45748	0	0	30218	0.16	0.93	20.26	0.33	1.25	134.2	write: database is locked (5) (SQLITE_BUSY)	
+counter	B immediate	80000	0	0	0	39050	0.19	1.91	429.04	0.47	2.48	311.3		
+counter	C split	80000	0	0	0	25158	0.23	20.07	33.54	0.02	0.12	3.9		
+counter	D queue	80000	0	0	0	9090	1.98	2.30	43.13	0.02	0.07	3.9		
+counter	E multi-process	80000	0	0	0	36278	0.07	6.71	929.48	0.03	0.08	203.1		
+long-tx	A naive	556	4	0	0	55	100.49	604.95	5302.61	299.38	903.56	3.9	write: database is locked (5) (SQLITE_BUSY)	
+long-tx	B immediate	645	6	0	0	64	100.37	516.36	805.90	198.89	804.71	3.9	write: database is locked (5) (SQLITE_BUSY)	
+long-tx	C split	825	0	0	0	82	100.48	503.50	805.25	0.01	0.04	3.9		
+long-tx	D queue	891	0	0	0	88	101.78	109.09	109.13	0.01	0.04	1.3		
+long-tx	E multi-process	1996	4	0	0	198	0.05	294.91	9535.27	0.01	0.04	10.0	write: database is locked (5) (SQLITE_BUSY)	
