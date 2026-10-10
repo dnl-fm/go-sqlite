@@ -40,6 +40,12 @@ not by marketing headline.
   `?experimental=without_rowid`, but MVCC rejects writes to those tables.
 - Turso 0.7.2 fixes MVCC sequence bookkeeping leaking into user-visible change
   counts. The 0.7.2 lab proves `AUTOINCREMENT` reports user-row changes only.
+- Every pooled connection gets the configured PRAGMAs (connector-based since
+  2026-10-07; before that only one of four did). Defaults include
+  `mvcc_gc_threshold = 1024` and `mvcc_checkpoint_threshold = 262144`, which
+  halve steady-state MVCC memory at Turso's throughput. Run long-lived services
+  with `MALLOC_ARENA_MAX=2`. Never hold `Rows` or a `Tx` open: an open reader
+  pins MVCC GC. Evidence: `lab/turso-memory/OUTCOME.md`.
 - Multi-statement writes on MVCC paths should use `ConcurrentTxRetry` or
   `BEGIN CONCURRENT` on one reserved connection.
 - Keep Turso SQL placeholders positional (`?`) unless a consuming app has

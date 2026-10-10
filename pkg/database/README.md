@@ -71,6 +71,20 @@ the remaining keys in sorted order. Every connection must report `journal_mode`
 as `mvcc`. With `StrictPragmas`, any PRAGMA error closes the new connection and
 fails the operation that requested it. Without it, other PRAGMA errors are ignored.
 
+## Memory
+
+Turso MVCC keeps row versions in native memory until its GC and checkpoint
+reclaim them. At Turso's own thresholds a steady write stream sat at 313–372 MiB
+in the lab; the package defaults (`mvcc_gc_threshold = 1024`,
+`mvcc_checkpoint_threshold = 262144`) hold the same workload at 171–192 MiB with
+no measurable throughput cost. Don't go lower than that: GC on every commit
+was 17–20× slower.
+
+The native library uses glibc `malloc`, which keeps freed memory in per-thread
+arenas. Run long-lived Turso services with `MALLOC_ARENA_MAX=2`; together with
+the defaults above, the lab workload dropped to 66–81 MiB. Evidence and the
+reproduction: `lab/turso-memory/OUTCOME.md`, `make lab-memory`.
+
 ## Queries
 
 ```go

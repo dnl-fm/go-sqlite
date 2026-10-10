@@ -67,6 +67,8 @@ func assertConnectionPragmas(t *testing.T, ctx context.Context, conn *sql.Conn, 
 		{"busy_timeout", 1000},
 		{"synchronous", 1},
 		{"cache_size", -64000},
+		{pragmaMVCCGCThreshold, 1024},
+		{pragmaMVCCCheckpointThreshold, 262144},
 	} {
 		var got int
 		if err := conn.QueryRowContext(ctx, "PRAGMA "+pragma.name).Scan(&got); err != nil {

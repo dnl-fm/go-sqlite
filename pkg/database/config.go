@@ -23,6 +23,11 @@ type Config struct {
 	MaxIdleConns          int
 }
 
+const (
+	pragmaMVCCGCThreshold         = "mvcc_gc_threshold"
+	pragmaMVCCCheckpointThreshold = "mvcc_checkpoint_threshold"
+)
+
 // DefaultConfig returns the standard Turso MVCC configuration.
 func DefaultConfig() *Config {
 	return &Config{
@@ -40,6 +45,8 @@ func DefaultConfig() *Config {
 		ConnMaxLifetime: 0,
 		PragmaOrder: []string{
 			"journal_mode",
+			pragmaMVCCGCThreshold,
+			pragmaMVCCCheckpointThreshold,
 			"foreign_keys",
 			"synchronous",
 			"busy_timeout",
@@ -49,12 +56,18 @@ func DefaultConfig() *Config {
 		},
 		Pragmas: map[string]string{
 			"journal_mode": "'mvcc'",
-			"synchronous":  "NORMAL",
-			"foreign_keys": "ON",
-			"busy_timeout": "1000",
-			"temp_store":   "MEMORY",
-			"cache_size":   "-64000",   // 64MB
-			"mmap_size":    "67108864", // 64MB
+			// Turso keeps MVCC row versions in native memory until GC and
+			// checkpoint reclaim them. Its defaults (16384 versions, ~4 MB log)
+			// let a steady write stream sit at ~2x the RSS of these values at
+			// the same throughput; see lab/turso-memory/OUTCOME.md.
+			pragmaMVCCGCThreshold:         "1024",
+			pragmaMVCCCheckpointThreshold: "262144",
+			"synchronous":                 "NORMAL",
+			"foreign_keys":                "ON",
+			"busy_timeout":                "1000",
+			"temp_store":                  "MEMORY",
+			"cache_size":                  "-64000",   // 64MB
+			"mmap_size":                   "67108864", // 64MB
 		},
 	}
 }
