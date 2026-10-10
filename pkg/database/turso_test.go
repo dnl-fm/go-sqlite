@@ -294,6 +294,23 @@ func TestTursoBeginConcurrentUsesDefaultMVCC(t *testing.T) {
 	}
 }
 
+func TestTursoDefaultJournalModeIsMVCC(t *testing.T) {
+	ctx := context.Background()
+	db, err := Open(ctx, t.TempDir()+"/journal-mode.db")
+	if err != nil {
+		t.Fatalf("failed to open turso database: %v", err)
+	}
+	defer db.Close()
+
+	var mode string
+	if err := db.QueryOne(ctx, "PRAGMA journal_mode").Scan(&mode); err != nil {
+		t.Fatalf("failed to read journal mode: %v", err)
+	}
+	if mode != "mvcc" {
+		t.Fatalf("expected journal_mode mvcc, got %q", mode)
+	}
+}
+
 func tursoBattleConfig() *Config {
 	return DefaultConfig().
 		WithMaxOpenConns(32).

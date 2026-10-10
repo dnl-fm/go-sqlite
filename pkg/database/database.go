@@ -3,11 +3,15 @@ package database
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
+	"net/url"
 	"sort"
 	"strings"
 	"sync"
 )
+
+const mvccJournalMode = "mvcc"
 
 // Database wraps sql.DB and provides context-aware operations
 type Database struct {
@@ -63,10 +67,15 @@ func Open(ctx context.Context, path string, opts ...Option) (*Database, error) {
 	db.config.Driver = DefaultDriver
 	db.config.WithPragma("journal_mode", "'mvcc'")
 
-	openPath := normalizeTursoDSN(path, db.config)
+	if db.config.EnableMultiprocessWAL {
+		return nil, errors.New("multiprocess WAL is incompatible with go-sqlite MVCC")
+	}
+	if containsMultiprocessWAL(path) {
+		return nil, errors.New("DSN must not request experimental=multiprocess_wal with go-sqlite MVCC")
+	}
 
 	// Open database connection using configured driver
-	sqlDB, err := sql.Open(db.config.Driver, openPath)
+	sqlDB, err := sql.Open(db.config.Driver, path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
@@ -128,6 +137,17 @@ func (d *Database) applyPragmas(ctx context.Context) error {
 
 func (d *Database) applyPragma(ctx context.Context, key, value string) error {
 	query := fmt.Sprintf("PRAGMA %s = %s", key, value)
+	if isMVCCJournalModePragma(key, value) {
+		var mode string
+		if err := d.db.QueryRowContext(ctx, query).Scan(&mode); err != nil {
+			return fmt.Errorf("set pragma %q: %w", query, err)
+		}
+		if !strings.EqualFold(mode, mvccJournalMode) {
+			return fmt.Errorf("set pragma %q: expected journal_mode %s, got %q", query, mvccJournalMode, mode)
+		}
+		return nil
+	}
+
 	_, err := d.db.ExecContext(ctx, query)
 	if err != nil {
 		if d.config.StrictPragmas {
@@ -221,33 +241,36 @@ func (d *Database) Path() string {
 	return d.path
 }
 
-func normalizeTursoDSN(path string, cfg *Config) string {
-	if cfg == nil || !cfg.EnableMultiprocessWAL {
-		return path
-	}
-	if !shouldEnableMultiprocessWAL(path) {
-		return path
-	}
-	if strings.Contains(path, "experimental=multiprocess_wal") {
-		return path
-	}
-
-	separator := "?"
-	if strings.Contains(path, "?") {
-		separator = "&"
-	}
-	return path + separator + "experimental=multiprocess_wal"
-}
-
-func shouldEnableMultiprocessWAL(path string) bool {
-	if path == "" || strings.Contains(path, ":memory:") {
+func containsMultiprocessWAL(path string) bool {
+	_, rawQuery, ok := strings.Cut(path, "?")
+	if !ok {
 		return false
 	}
 
-	lower := strings.ToLower(path)
-	return !strings.HasPrefix(lower, "http://") &&
-		!strings.HasPrefix(lower, "https://") &&
-		!strings.HasPrefix(lower, "libsql://")
+	query, err := url.ParseQuery(rawQuery)
+	if err != nil {
+		return false
+	}
+	for key, values := range query {
+		if !strings.EqualFold(key, "experimental") {
+			continue
+		}
+		for _, value := range values {
+			if strings.EqualFold(value, "multiprocess_wal") {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func isMVCCJournalModePragma(key, value string) bool {
+	if !strings.EqualFold(key, "journal_mode") {
+		return false
+	}
+	normalized := strings.TrimSpace(strings.ToLower(value))
+	normalized = strings.Trim(normalized, `"'`)
+	return normalized == mvccJournalMode
 }
 
 // Config returns the current configuration

@@ -18,6 +18,7 @@ Type-safe SQLite toolkit for Go.
 go get github.com/dnl-fm/go-sqlite
 ```
 
+
 ## Quick Start
 
 ### 1. Define Your Entity
@@ -90,7 +91,9 @@ users, err := repo.FindByQuery(ctx, q)
 
 ### 5. Transactions
 
-Use `WithConcurrentTx` for Turso MVCC write transactions. It runs `BEGIN CONCURRENT` on a reserved connection so overlapping writes from different handles or scripts can proceed.
+Use `WithConcurrentTx` for Turso MVCC write transactions. It runs
+`BEGIN CONCURRENT` on a reserved connection so overlapping writes on different
+pooled connections can proceed inside the owning process.
 
 ```go
 err := repo.WithConcurrentTx(ctx, func(tx *repository.Repository[User, string]) error {
@@ -178,7 +181,6 @@ no supported old-WAL mode in this package.
 | PRAGMA | Default | Purpose |
 |--------|---------|---------|
 | `journal_mode` | `'mvcc'` | Concurrent writes across pooled connections |
-| DSN feature | `experimental=multiprocess_wal` | Live inspection with matching `tursodb` |
 | `synchronous` | `NORMAL` | Balanced durability/speed |
 | `foreign_keys` | `ON` | Enforce referential integrity |
 | `busy_timeout` | `1000` | Wait before locked error |
@@ -200,21 +202,20 @@ cfg := database.DefaultConfig().WithPragma("cache_size", "-64000")
 db, _ := database.Open(ctx, "app.db", database.WithConfig(cfg))
 ```
 
-For local file databases, `database.Open(ctx, "app.db")` enables Turso's
-`experimental=multiprocess_wal` DSN flag by default. That is what lets a
-running app keep the DB open while operators inspect it with:
+Turso 0.7 makes MVCC and multiprocess WAL mutually exclusive. This package
+chooses MVCC: one application process owns each database file, while its pooled
+connections provide same-process concurrency. `EnableMultiprocessWAL` and
+`WithMultiprocessWAL` remain for source compatibility, but `Open` rejects them.
 
-```bash
-tursodb --experimental-multiprocess-wal app.db ".tables"
-```
-
-This is an inspection feature, not a multi-writer-process promise. Keep one app
-process owning writes. See [Turso Operations](docs/turso-operations.md) for the
-full operator rule.
+Agents and CLI tools read live state through the owning app's authenticated API
+or local admin socket. For offline forensics, inspect an owner-produced snapshot
+or a cleanly closed database with `tursodb`; never raw-copy a live Turso file.
+See [Turso Operations](docs/turso-operations.md) and the
+[consumer agent-access contract](docs/agent-api.md).
 
 ### Turso MVCC
 
-Turso 0.6.0 added experimental plain-engine `WITHOUT ROWID` support behind `?experimental=without_rowid`, and the current 0.6.1 / 0.7.0-pre.2 / 0.7.0-pre.4 / 0.7.0-pre.5 / 0.7.0-pre.6 / 0.7.0-pre.10 / 0.7.0-pre.13 labs keep the same boundary: MVCC still rejects writes to those tables. This package requires normal rowid tables. `database.Open` validates existing schema, `database.Exec` rejects `WITHOUT ROWID` SQL, and the migration runner validates the schema after each migration. Rebuild existing plain SQLite databases into normal rowid tables before opening them with this package. The current probes live in `lab/turso-v060`, `lab/turso-v061`, `lab/turso-v070-pre2`, `lab/turso-v070-pre4`, `lab/turso-v070-pre5`, `lab/turso-v070-pre6`, `lab/turso-v070-pre10`, and `lab/turso-v070-pre13`.
+Turso 0.6.0 added experimental plain-engine `WITHOUT ROWID` support behind `?experimental=without_rowid`, and the 0.6.1 / 0.7 prerelease / stable 0.7.0 through 0.7.2 labs keep the same boundary: MVCC still rejects writes to those tables. This package requires normal rowid tables. `database.Open` validates existing schema, `database.Exec` rejects `WITHOUT ROWID` SQL, and the migration runner validates the schema after each migration. Turso 0.7.2 also fixes MVCC sequence bookkeeping leaking into user-visible change counts; the 0.7.2 lab proves `AUTOINCREMENT` reports user-row changes only. Rebuild existing plain SQLite databases into normal rowid tables before opening them with this package. The current probes live in `lab/turso-v060`, `lab/turso-v061`, `lab/turso-v070-pre2`, `lab/turso-v070-pre4`, `lab/turso-v070-pre5`, `lab/turso-v070-pre6`, `lab/turso-v070-pre10`, `lab/turso-v070-pre13`, `lab/turso-v070`, `lab/turso-v071`, and `lab/turso-v072`.
 
 Install `tursodb` anywhere operators or tests run or inspect database files:
 
@@ -224,15 +225,15 @@ curl --proto '=https' --tlsv1.2 -LsSf \
 source "$HOME/.turso/env"
 ```
 
-Use `tursodb` instead of system `sqlite3` for local inspection. It can read
+Use `tursodb` instead of system `sqlite3` for offline inspection. It can read
 normal SQLite databases and is required for Turso-format databases; plain
-`sqlite3` can reject valid Turso files as "file is not a database". Servers
-that run Turso-backed apps should have the CLI installed so operators can
-inspect the live file on the owning host.
+`sqlite3` can reject valid Turso files as "file is not a database". Do not open
+the canonical file while its MVCC owner is running. Ask the service to produce
+a snapshot, or stop it cleanly first.
 
 ```bash
-tursodb app.db "PRAGMA integrity_check;"
-tursodb --experimental-multiprocess-wal app.db ".tables"
+tursodb snapshot.db "PRAGMA integrity_check;"
+tursodb snapshot.db ".tables"
 ```
 
 Process layout matters. One Go process can own one database file and use MVCC
@@ -324,6 +325,7 @@ go run tmp/examples/transactions/main.go
 go run tmp/examples/migrations/main.go
 go run tmp/examples/timezones/main.go
 ```
+
 
 ## Requirements
 

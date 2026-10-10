@@ -19,38 +19,25 @@ defer db.Close()
 `database.Open`, `DefaultConfig`, `ProductionConfig`, and `DevelopmentConfig`
 use Turso MVCC. There is no supported old-WAL or modernc path in this package.
 
-For local file databases, `database.Open` also enables Turso's
-`experimental=multiprocess_wal` DSN flag by default:
+Turso 0.7 makes MVCC and multiprocess WAL mutually exclusive. This package
+chooses MVCC and one owning process per physical database file.
 
-```text
-app.db
-app.db?experimental=multiprocess_wal
-```
+## Inspection
 
-Existing query parameters are preserved:
+Live inspection goes through the owning service's authenticated API or local
+admin socket. The library does not implement that service route; consuming apps
+must expose the named reads their operators and agents need.
 
-```text
-app.db?_busy_timeout=5000
-app.db?_busy_timeout=5000&experimental=multiprocess_wal
-```
-
-In-memory databases and remote URLs are left alone.
-
-## Live Inspection
-
-Install `tursodb` on machines that run or inspect Turso-backed files. Use it
-instead of system `sqlite3`.
+Install `tursodb` on machines that inspect offline Turso-backed files. Use it
+instead of system `sqlite3`, and only against an owner-produced snapshot or a
+cleanly closed database.
 
 ```bash
-tursodb app.db "PRAGMA integrity_check;"
-tursodb --experimental-multiprocess-wal app.db ".tables"
+tursodb snapshot.db "PRAGMA integrity_check;"
+tursodb snapshot.db ".tables"
 ```
 
-The app-side flag is on by default for local file DBs, but the CLI still needs
-`--experimental-multiprocess-wal` when the app may have the file open.
-
-This is an inspection feature. It does not mean several Go application
-processes can safely write the same DB file.
+Never raw-copy a live Turso database and call the result evidence.
 
 ## Configuration
 
@@ -63,12 +50,14 @@ cfg := database.DefaultConfig().
 db, err := database.Open(ctx, "app.db", database.WithConfig(cfg))
 ```
 
-Opt out of the live-inspection DSN flag only for tests or labs that need to
-prove the boundary:
+`EnableMultiprocessWAL` and `WithMultiprocessWAL` remain only for source
+compatibility. Enabling multiprocess WAL is rejected when `Open` applies the
+package's MVCC contract:
 
 ```go
-cfg := database.DefaultConfig().WithMultiprocessWAL(false)
+cfg := database.DefaultConfig().WithMultiprocessWAL(true)
 db, err := database.Open(ctx, "app.db", database.WithConfig(cfg))
+// err: multiprocess WAL is incompatible with go-sqlite's MVCC mode
 ```
 
 `WithDriver` is kept for source compatibility, but this package always uses the
@@ -113,7 +102,7 @@ behind one owner process.
 ## See Also
 
 - [Turso operations](../../docs/turso-operations.md)
-- [Turso consumer guide](../../docs/turso-060-consumer-guide.md)
+- [Turso consumer guide](../../docs/turso-consumer-guide.md)
 - [query](../query/README.md)
 - [repository](../repository/README.md)
 - [migrations](../migrations/README.md)
