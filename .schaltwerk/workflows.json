@@ -6,7 +6,7 @@
       "pull_request",
       "push:main"
     ],
-    "image": "schaltwerk-go:3",
+    "image": "schaltwerk-go:4",
     "commands": [
       "go version",
       "make backpressure"
@@ -25,7 +25,7 @@
       "push",
       "manual"
     ],
-    "image": "schaltwerk-go:3",
+    "image": "schaltwerk-go:4",
     "requires": [
       "go-backpressure"
     ],

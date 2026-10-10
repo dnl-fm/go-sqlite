@@ -1,6 +1,6 @@
 module github.com/dnl-fm/go-sqlite/lab/turso-v070-pre4
 
-go 1.26.3
+go 1.26.5
 
 require turso.tech/database/tursogo v0.7.0-pre.4
 
