@@ -1,16 +1,49 @@
-.PHONY: build test lab-test lint backpressure check check-dev rabbit-check rabbit-check-dev rabbit-review file-size test-cover test-verbose install-hooks clean migrate-build
+.PHONY: help build consumer-build consumer-scan test lab-test lint backpressure check check-dev rabbit-check rabbit-check-dev rabbit-review file-size test-cover test-verbose install-hooks clean migrate-build migrate-up migrate-down migrate-status migrate-create
 
-# Build migrate CLI
+CONSUMER_ROOT ?= $(HOME)/werk
+
+help:
+	@echo ""
+	@echo "github.com/dnl-fm/go-sqlite"
+	@echo ""
+	@echo "  make build           Build all CLIs"
+	@echo "  make consumer-build  Build the consumer scanner"
+	@echo "  make consumer-scan   Scan CONSUMER_ROOT for go-sqlite users"
+	@echo "  make test            Run package tests"
+	@echo "  make lab-test        Run exploratory Turso labs"
+	@echo "  make lint            Run deterministic lint checks"
+	@echo "  make backpressure    Run local quality backpressure"
+	@echo "  make check           Run full repository checks"
+	@echo "  make check-dev       Run development-phase checks"
+	@echo "  make clean           Remove build artifacts"
+	@echo ""
+
 build:
-	@echo "Building migrate CLI..."
-	@GOWORK=off go build -o bin/migrate ./cmd/migrate
+	@echo ""
+	@$(MAKE) migrate-build consumer-build
+	@echo "Built all CLIs"
+	@echo ""
 
-# Run all tests
+consumer-build:
+	@echo ""
+	@GOWORK=off go build -o bin/go-sqlite-consumers ./cmd/go-sqlite-consumers
+	@echo "Built bin/go-sqlite-consumers"
+	@echo ""
+
+consumer-scan:
+	@echo ""
+	@GOWORK=off go run ./cmd/go-sqlite-consumers scan "$(CONSUMER_ROOT)" $(ARGS)
+	@echo ""
+
 test:
-	@GOWORK=off go test ./pkg/...
+	@echo ""
+	@GOWORK=off go test ./...
+	@echo ""
 
-# Run exploratory labs
+
+
 lab-test:
+	@echo ""
 	@cd lab/turso-v060 && GOWORK=off go test ./...
 	@cd lab/turso-v061 && GOWORK=off go test ./...
 	@cd lab/turso-v070-pre2 && GOWORK=off go test ./...
@@ -19,73 +52,107 @@ lab-test:
 	@cd lab/turso-v070-pre6 && GOWORK=off go test ./...
 	@cd lab/turso-v070-pre10 && GOWORK=off go test ./...
 	@cd lab/turso-v070-pre13 && GOWORK=off go test ./...
+	@cd lab/turso-v070 && GOWORK=off go test ./...
+	@cd lab/turso-v071 && GOWORK=off go test ./...
+	@cd lab/turso-v072 && GOWORK=off go test ./...
+	@echo ""
 
-# Run deterministic lint checks
 lint:
+	@echo ""
 	@GOWORK=off go vet ./...
 	@GOWORK=off golangci-lint run --new --disable=intrange --disable=ireturn --disable=noinlineerr --disable=unqueryvet
+	@echo ""
 
-# Run local quality backpressure
-backpressure: lint file-size test build rabbit-check
+backpressure:
+	@echo ""
+	@$(MAKE) lint file-size test build rabbit-check
+	@echo "Backpressure passed"
+	@echo ""
 
-# Run full repository policy and local backpressure
-check: backpressure
+check:
+	@echo ""
+	@$(MAKE) backpressure
+	@echo "Check passed"
+	@echo ""
 
-# Run development-phase checks. Rabbit still runs, but selected rules are
-# downgraded to warnings so policy churn stays visible without blocking flow.
 check-dev:
+	@echo ""
 	@$(MAKE) lint file-size test build rabbit-check-dev
+	@echo "Development checks passed"
+	@echo ""
 
 rabbit-check:
+	@echo ""
 	@rabbit check --ci
+	@echo ""
 
 rabbit-check-dev:
+	@echo ""
 	@rabbit check --dev --dev-allow "$(RABBIT_DEV_ALLOW)"
+	@echo ""
 
 rabbit-review:
+	@echo ""
 	@rabbit review
+	@echo ""
 
 file-size:
+	@echo ""
 	@./scripts/check-file-size.sh
+	@echo ""
+
+test-cover:
+	@echo ""
+	@GOWORK=off go test ./... -cover
+	@echo ""
+
+test-verbose:
+	@echo ""
+	@GOWORK=off go test ./... -v
+	@echo ""
 
 install-hooks:
+	@echo ""
 	@./scripts/install-git-hooks.sh
+	@echo ""
 
-# Run tests with coverage
-test-cover:
-	@GOWORK=off go test ./pkg/... -cover
-
-# Run tests with verbose output
-test-verbose:
-	@GOWORK=off go test ./pkg/... -v
-
-# Clean build artifacts
 clean:
+	@echo ""
 	@rm -rf bin/
+	@echo "Cleaned build artifacts"
+	@echo ""
 
-# Build migrate CLI (alias)
-migrate-build: build
+migrate-build:
+	@echo ""
+	@GOWORK=off go build -o bin/migrate ./cmd/migrate
+	@echo "Built bin/migrate"
+	@echo ""
 
-# ---------------------------------------------------------
-# Migration Commands (require DATABASE_URL to be set)
-# ---------------------------------------------------------
-
-# Run pending migrations
-migrate-up: build
+migrate-up:
+	@echo ""
+	@$(MAKE) migrate-build
 	@./bin/migrate up
+	@echo ""
 
-# Rollback last migration
-migrate-down: build
+migrate-down:
+	@echo ""
+	@$(MAKE) migrate-build
 	@./bin/migrate down
+	@echo ""
 
-# Show migration status
-migrate-status: build
+migrate-status:
+	@echo ""
+	@$(MAKE) migrate-build
 	@./bin/migrate status
+	@echo ""
 
-# Create new migration: make migrate-create name=add_users_table
-migrate-create: build
+migrate-create:
+	@echo ""
 	@if [ -z "$(name)" ]; then \
 		echo "Error: migration name required. Usage: make migrate-create name=migration_name"; \
+		echo ""; \
 		exit 1; \
 	fi
+	@$(MAKE) migrate-build
 	@./bin/migrate create $(name)
+	@echo ""

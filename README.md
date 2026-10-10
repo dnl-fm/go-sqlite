@@ -18,6 +18,24 @@ Type-safe SQLite toolkit for Go.
 go get github.com/dnl-fm/go-sqlite
 ```
 
+## Find Consumers
+
+`go-sqlite-consumers` scans Go modules without changing them. It resolves the
+latest published `go-sqlite` tag once, parses every `go.mod`, and separates
+outdated pins from local and legacy replacements.
+
+```bash
+make consumer-build
+./bin/go-sqlite-consumers scan ~/werk
+./bin/go-sqlite-consumers scan ~/werk --json
+./bin/go-sqlite-consumers scan ~/werk --check
+./bin/go-sqlite-consumers scan ~/werk --target v0.8.0
+```
+
+`--check` exits non-zero when published pins are behind the target. Local
+replacements are reported but are not treated as upgradeable pins. Use
+`make consumer-scan ARGS="--json"` for the repository shortcut; override its
+root with `CONSUMER_ROOT=/path/to/workspace`.
 
 ## Quick Start
 
@@ -326,6 +344,10 @@ go run tmp/examples/migrations/main.go
 go run tmp/examples/timezones/main.go
 ```
 
+## Documentation
+
+Use the [documentation index](docs/readme.md) for consumer upgrades,
+integration, agent access, and production-operation guidance.
 
 ## Requirements
 

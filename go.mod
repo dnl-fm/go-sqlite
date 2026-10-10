@@ -3,6 +3,7 @@ module github.com/dnl-fm/go-sqlite
 go 1.26.5
 
 require (
+	golang.org/x/mod v0.38.0
 	turso.tech/database/tursogo v0.7.2
 )
 
