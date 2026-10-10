@@ -1,8 +1,11 @@
 # database
 
-The `database` package is the `go-sqlite` open path. It opens through the
-Turso `database/sql` driver, applies the package PRAGMAs, validates rowid-table
-schema, and exposes context-aware query helpers.
+Connection-local PRAGMAs must reach every connection, or pooled queries can
+lose foreign-key enforcement and use different timeouts.
+
+The `database` package configures each native Turso connection before the pool
+uses it, including connections created later. It validates rowid-table schema
+and exposes context-aware query helpers.
 
 Use this package instead of opening SQLite directly in Go services.
 
@@ -63,6 +66,11 @@ db, err := database.Open(ctx, "app.db", database.WithConfig(cfg))
 `WithDriver` is kept for source compatibility, but this package always uses the
 Turso driver and MVCC journal mode.
 
+Each connection receives all configured PRAGMAs in `PragmaOrder`, followed by
+the remaining keys in sorted order. Every connection must report `journal_mode`
+as `mvcc`. With `StrictPragmas`, any PRAGMA error closes the new connection and
+fails the operation that requested it. Without it, other PRAGMA errors are ignored.
+
 ## Queries
 
 ```go
@@ -72,6 +80,10 @@ if err != nil {
 }
 defer rows.Close()
 ```
+
+Never hold `Rows` or a `Tx` open across other work. An open reader pins its MVCC
+snapshot and prevents collection of old row versions. Close `Rows` promptly,
+including after partial reads. Commit or roll back each transaction promptly.
 
 ```go
 var email string

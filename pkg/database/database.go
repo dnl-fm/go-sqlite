@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"database/sql"
+	"database/sql/driver"
 	"errors"
 	"fmt"
 	"net/url"
@@ -74,11 +75,17 @@ func Open(ctx context.Context, path string, opts ...Option) (*Database, error) {
 		return nil, errors.New("DSN must not request experimental=multiprocess_wal with go-sqlite MVCC")
 	}
 
-	// Open database connection using configured driver
-	sqlDB, err := sql.Open(db.config.Driver, path)
+	// Resolve the registered driver without opening a native connection.
+	registeredDB, err := sql.Open(db.config.Driver, path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
+	registeredDriver := registeredDB.Driver()
+	err = registeredDB.Close()
+	if err != nil {
+		return nil, fmt.Errorf("failed to close driver lookup: %w", err)
+	}
+	sqlDB := sql.OpenDB(&pragmaConnector{driver: registeredDriver, path: path, config: db.config})
 
 	db.db = sqlDB
 
@@ -86,11 +93,6 @@ func Open(ctx context.Context, path string, opts ...Option) (*Database, error) {
 	db.db.SetMaxOpenConns(db.config.MaxOpenConns)
 	db.db.SetMaxIdleConns(db.config.MaxIdleConns)
 	db.db.SetConnMaxLifetime(db.config.ConnMaxLifetime)
-
-	if err := db.applyPragmas(ctx); err != nil {
-		sqlDB.Close()
-		return nil, err
-	}
 
 	// Verify connection
 	err = db.db.PingContext(ctx)
@@ -106,55 +108,108 @@ func Open(ctx context.Context, path string, opts ...Option) (*Database, error) {
 	return db, nil
 }
 
-// applyPragmas applies configured pragma settings
-func (d *Database) applyPragmas(ctx context.Context) error {
-	applied := make(map[string]bool, len(d.config.Pragmas))
-	for _, key := range d.config.PragmaOrder {
-		value, ok := d.config.Pragmas[key]
+// pragmaConnector configures every native connection before the pool uses it.
+type pragmaConnector struct {
+	config *Config
+	driver driver.Driver
+	path   string
+}
+
+func (c *pragmaConnector) Driver() driver.Driver { return c.driver }
+
+func (c *pragmaConnector) Connect(ctx context.Context) (driver.Conn, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	conn, err := c.driver.Open(c.path)
+	if err != nil {
+		return nil, err
+	}
+	if err := c.applyPragmas(ctx, conn); err != nil {
+		_ = conn.Close()
+		return nil, err
+	}
+	return conn, nil
+}
+
+func (c *pragmaConnector) applyPragmas(ctx context.Context, conn driver.Conn) error {
+	applied := make(map[string]bool, len(c.config.Pragmas))
+	for _, key := range c.config.PragmaOrder {
+		value, ok := c.config.Pragmas[key]
 		if !ok {
 			continue
 		}
-		if err := d.applyPragma(ctx, key, value); err != nil {
+		if err := c.applyPragma(ctx, conn, key, value); err != nil {
 			return err
 		}
 		applied[key] = true
 	}
 
 	var remaining []string
-	for key := range d.config.Pragmas {
+	for key := range c.config.Pragmas {
 		if !applied[key] {
 			remaining = append(remaining, key)
 		}
 	}
 	sort.Strings(remaining)
 	for _, key := range remaining {
-		if err := d.applyPragma(ctx, key, d.config.Pragmas[key]); err != nil {
+		if err := c.applyPragma(ctx, conn, key, c.config.Pragmas[key]); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (d *Database) applyPragma(ctx context.Context, key, value string) error {
+func (c *pragmaConnector) applyPragma(ctx context.Context, conn driver.Conn, key, value string) error {
 	query := fmt.Sprintf("PRAGMA %s = %s", key, value)
 	if isMVCCJournalModePragma(key, value) {
-		var mode string
-		if err := d.db.QueryRowContext(ctx, query).Scan(&mode); err != nil {
-			return fmt.Errorf("set pragma %q: %w", query, err)
-		}
-		if !strings.EqualFold(mode, mvccJournalMode) {
-			return fmt.Errorf("set pragma %q: expected journal_mode %s, got %q", query, mvccJournalMode, mode)
-		}
-		return nil
+		return verifyMVCCJournalMode(ctx, conn, query)
 	}
 
-	_, err := d.db.ExecContext(ctx, query)
+	execer, ok := conn.(driver.ExecerContext)
+	var err error
+	if !ok {
+		err = errors.New("driver does not implement ExecerContext")
+	} else {
+		_, err = execer.ExecContext(ctx, query, nil)
+	}
 	if err != nil {
-		if d.config.StrictPragmas {
+		if c.config.StrictPragmas {
 			return fmt.Errorf("set pragma %q: %w", query, err)
 		}
 		// Ignore pragma errors for compatibility. Some SQLite drivers or in-memory
 		// databases do not support every pragma.
+	}
+	return nil
+}
+
+func verifyMVCCJournalMode(ctx context.Context, conn driver.Conn, query string) error {
+	queryer, ok := conn.(driver.QueryerContext)
+	if !ok {
+		return fmt.Errorf("set pragma %q: driver does not implement QueryerContext", query)
+	}
+	rows, err := queryer.QueryContext(ctx, query, nil)
+	if err != nil {
+		return fmt.Errorf("set pragma %q: %w", query, err)
+	}
+	values := make([]driver.Value, len(rows.Columns()))
+	err = rows.Next(values)
+	closeErr := rows.Close()
+	if err != nil {
+		return fmt.Errorf("set pragma %q: %w", query, err)
+	}
+	if closeErr != nil {
+		return fmt.Errorf("set pragma %q: %w", query, closeErr)
+	}
+	if len(values) != 1 {
+		return fmt.Errorf("set pragma %q: expected one journal_mode column, got %d", query, len(values))
+	}
+	mode := fmt.Sprint(values[0])
+	if b, ok := values[0].([]byte); ok {
+		mode = string(b)
+	}
+	if !strings.EqualFold(mode, mvccJournalMode) {
+		return fmt.Errorf("set pragma %q: expected journal_mode %s, got %q", query, mvccJournalMode, mode)
 	}
 	return nil
 }
