@@ -1,0 +1,12 @@
+phase,rows,pass,connections_read,rss_anon_kib,go_heap_inuse_kib,detail
+baseline,40000,0,0,7536,816,db_size_bytes=165359616 journal_mode=mvcc
+after_vacuum,40000,1,0,469964,816,
+after_vacuum_trim,40000,1,0,147000,824,malloc_trim_result=1
+after_vacuum,40000,2,0,306348,816,
+after_vacuum_trim,40000,2,0,280792,816,malloc_trim_result=1
+after_vacuum,40000,3,0,442704,816,
+after_vacuum_trim,40000,3,0,414536,816,malloc_trim_result=1
+after_vacuum,40000,4,0,625664,816,
+after_vacuum_trim,40000,4,0,420164,816,malloc_trim_result=1
+after_vacuum,40000,5,0,579496,816,
+after_vacuum_trim,40000,5,0,553880,816,malloc_trim_result=1

@@ -1,0 +1,18 @@
+phase,rows,pass,connections_read,rss_anon_kib,go_heap_inuse_kib,detail
+baseline,0,0,0,5640,944,journal_mode=wal pool_connections=4
+growth,20000,0,0,7728,1104,deleted_samples=0
+growth,40000,0,0,8068,1176,deleted_samples=0
+growth,60000,0,0,8520,1208,deleted_samples=0
+growth,80000,0,0,8668,1232,deleted_samples=0
+growth,100000,0,0,9212,1240,deleted_samples=0
+growth,120000,0,0,9412,1248,deleted_samples=0
+growth,140000,0,0,9368,1256,deleted_samples=0
+growth,150000,0,0,9472,1256,deleted_samples=0
+growth,160000,0,0,10132,1256,deleted_samples=0
+growth,180000,0,0,10140,1256,deleted_samples=0
+growth,200000,0,0,10172,1256,deleted_samples=0
+growth,220000,0,0,10508,1264,deleted_samples=0
+growth,240000,0,0,11644,1288,deleted_samples=0
+growth,260000,0,0,11764,1296,deleted_samples=0
+growth,280000,0,0,11644,1304,deleted_samples=0
+growth,300000,0,0,11724,1304,deleted_samples=0

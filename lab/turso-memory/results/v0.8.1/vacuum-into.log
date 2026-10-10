@@ -1,0 +1,5 @@
+probe=vacuum-into pass=1 rss_anon_kib=469964 ratio=2.864
+probe=vacuum-into pass=2 rss_anon_kib=306348 ratio=1.850
+probe=vacuum-into pass=3 rss_anon_kib=442704 ratio=2.695
+probe=vacuum-into pass=4 rss_anon_kib=625664 ratio=3.828
+probe=vacuum-into pass=5 rss_anon_kib=579496 ratio=3.542

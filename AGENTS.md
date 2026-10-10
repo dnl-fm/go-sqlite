@@ -21,6 +21,9 @@ make test
 # Exploratory Turso labs
 make lab-test
 
+# Native-memory probes per Turso version (slow; see lab/turso-memory/OUTCOME.md)
+make lab-memory TURSO_VERSIONS="v0.7.2 v0.8.1"
+
 # Build migrate CLI
 make build
 ```

@@ -1,4 +1,6 @@
-.PHONY: help build consumer-build consumer-scan test lab-test lint backpressure check check-dev rabbit-check rabbit-check-dev rabbit-review file-size test-cover test-verbose install-hooks clean migrate-build migrate-up migrate-down migrate-status migrate-create
+.PHONY: help build consumer-build consumer-scan test lab-test lab-memory lint backpressure check check-dev rabbit-check rabbit-check-dev rabbit-review file-size test-cover test-verbose install-hooks clean migrate-build migrate-up migrate-down migrate-status migrate-create
+
+TURSO_VERSIONS ?= v0.7.2 v0.8.1
 
 CONSUMER_ROOT ?= $(HOME)/werk
 
@@ -11,6 +13,7 @@ help:
 	@echo "  make consumer-scan   Scan CONSUMER_ROOT for go-sqlite users"
 	@echo "  make test            Run package tests"
 	@echo "  make lab-test        Run exploratory Turso labs"
+	@echo "  make lab-memory      Reproduce Turso native-memory issues per version"
 	@echo "  make lint            Run deterministic lint checks"
 	@echo "  make backpressure    Run local quality backpressure"
 	@echo "  make check           Run full repository checks"
@@ -39,6 +42,9 @@ test:
 	@echo ""
 	@GOWORK=off go test ./...
 	@echo ""
+
+lab-memory:
+	@cd lab/turso-memory && ./run.sh $(TURSO_VERSIONS)
 
 
 

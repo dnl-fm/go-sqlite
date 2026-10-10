@@ -1,0 +1,3 @@
+phase,rows,pass,connections_read,rss_anon_kib,go_heap_inuse_kib,detail
+baseline,0,0,0,5552,816,journal_mode=mvcc
+closed,40000,0,0,90872,864,db_size_bytes=165359616

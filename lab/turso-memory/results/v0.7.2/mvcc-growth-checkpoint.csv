@@ -1,0 +1,18 @@
+phase,rows,pass,connections_read,rss_anon_kib,go_heap_inuse_kib,detail
+baseline,0,0,0,5632,824,journal_mode=mvcc pool_connections=4
+growth,20000,0,0,38364,1008,"deleted_samples=0 checkpoint_result=[busy=0,log=0,checkpointed=0]"
+growth,40000,0,0,67972,1008,"deleted_samples=0 checkpoint_result=[busy=0,log=0,checkpointed=0]"
+growth,60000,0,0,90800,1032,"deleted_samples=0 checkpoint_result=[busy=0,log=0,checkpointed=0]"
+growth,80000,0,0,97708,1032,"deleted_samples=0 checkpoint_result=[busy=0,log=0,checkpointed=0]"
+growth,100000,0,0,97288,1104,"deleted_samples=0 checkpoint_result=[busy=0,log=0,checkpointed=0]"
+growth,120000,0,0,104000,1112,"deleted_samples=0 checkpoint_result=[busy=0,log=0,checkpointed=0]"
+growth,140000,0,0,105924,1120,"deleted_samples=0 checkpoint_result=[busy=0,log=0,checkpointed=0]"
+growth,150000,0,0,108848,1128,deleted_samples=0
+growth,160000,0,0,108852,1120,"deleted_samples=0 checkpoint_result=[busy=0,log=0,checkpointed=0]"
+growth,180000,0,0,117796,1120,"deleted_samples=0 checkpoint_result=[busy=0,log=0,checkpointed=0]"
+growth,200000,0,0,120400,1120,"deleted_samples=0 checkpoint_result=[busy=0,log=0,checkpointed=0]"
+growth,220000,0,0,121908,1128,"deleted_samples=0 checkpoint_result=[busy=0,log=0,checkpointed=0]"
+growth,240000,0,0,124904,1128,"deleted_samples=0 checkpoint_result=[busy=0,log=0,checkpointed=0]"
+growth,260000,0,0,125404,1136,"deleted_samples=0 checkpoint_result=[busy=0,log=0,checkpointed=0]"
+growth,280000,0,0,129676,1136,"deleted_samples=0 checkpoint_result=[busy=0,log=0,checkpointed=0]"
+growth,300000,0,0,133996,1136,"deleted_samples=0 checkpoint_result=[busy=0,log=0,checkpointed=0]"

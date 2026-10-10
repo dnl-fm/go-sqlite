@@ -1,0 +1,4 @@
+results/*/src/
+results/*/work/
+turso-memory
+*.db*

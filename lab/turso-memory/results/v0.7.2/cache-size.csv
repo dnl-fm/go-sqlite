@@ -1,0 +1,6 @@
+phase,rows,pass,connections_read,rss_anon_kib,go_heap_inuse_kib,detail
+baseline,0,0,0,5528,864,conn_1_cache_size=-2048 conn_2_cache_size=-2048 conn_3_cache_size=-2048 conn_4_cache_size=-2048
+after_read,40000,0,1,7920,864,conn_1_cache_size=-2048 body_bytes=81920000 indexed_docs=40000
+after_read,40000,0,2,9972,864,conn_2_cache_size=-2048 body_bytes=81920000 indexed_docs=40000
+after_read,40000,0,3,12280,872,conn_3_cache_size=-2048 body_bytes=81920000 indexed_docs=40000
+after_read,40000,0,4,14444,872,conn_4_cache_size=-2048 body_bytes=81920000 indexed_docs=40000

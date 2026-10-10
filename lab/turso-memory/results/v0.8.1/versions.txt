@@ -1,0 +1,2 @@
+turso.tech/database/tursogo v0.8.1
+github.com/tursodatabase/turso-go-platform-libs v0.8.1
