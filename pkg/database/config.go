@@ -1,123 +1,61 @@
 package database
 
-import (
-	"time"
-
-	"github.com/dnl-fm/go-sqlite/pkg/driver/turso"
-)
-
-// DefaultDriver is the driver used when none is specified.
-const DefaultDriver = turso.DriverName
-
-// Config holds database connection pool and pragma settings
-type Config struct {
-	Pragmas       map[string]string
-	PragmaOrder   []string
-	StrictPragmas bool
-	Driver        string
-	// Deprecated: multiprocess WAL is incompatible with go-sqlite's MVCC
-	// contract. Setting this field makes Open fail.
-	EnableMultiprocessWAL bool
-	ConnMaxLifetime       time.Duration
-	MaxOpenConns          int
-	MaxIdleConns          int
-}
+import "time"
 
 const (
-	pragmaMVCCGCThreshold         = "mvcc_gc_threshold"
-	pragmaMVCCCheckpointThreshold = "mvcc_checkpoint_threshold"
+	walJournalMode = "WAL"
+	busyTimeoutKey = "busy_timeout"
+	memoryPath     = ":memory:"
+	cacheSizeKey   = "cache_size"
+	journalModeKey = "journal_mode"
+	synchronousKey = "synchronous"
+	foreignKeysKey = "foreign_keys"
+	tempStoreKey   = "temp_store"
 )
 
-// DefaultConfig returns the standard Turso MVCC configuration.
+// Config holds reader-pool settings and PRAGMAs shared by both pools.
+// The writer always has one permanent connection. In-memory databases use
+// one permanent connection for both roles, ignoring these pool settings.
+type Config struct {
+	Pragmas         map[string]string
+	PragmaOrder     []string
+	StrictPragmas   bool
+	ConnMaxLifetime time.Duration
+	MaxOpenConns    int
+	MaxIdleConns    int
+}
+
+// DefaultConfig returns the standard SQLite WAL configuration.
 func DefaultConfig() *Config {
 	return &Config{
-		Driver: DefaultDriver,
-		// Every native turso connection carries its own page cache — ~25 MB
-		// against a 300 MB database. A pool of 32 is therefore ~800 MB of
-		// native memory once concurrent load fills it, and hourly recycling
-		// leaks more (native memory is not returned on connection close).
-		// That combination OOM-crashlooped prod maild on 2026-08-06 until
-		// its pool was capped at 4 (mailbox-go 473a893, concurrent repro in
-		// its internal/store). Keep the pool small and stable: turso apps
-		// here are single-owner and their queries are milliseconds.
-		MaxOpenConns:    4,
-		MaxIdleConns:    4,
-		ConnMaxLifetime: 0,
-		PragmaOrder: []string{
-			"journal_mode",
-			pragmaMVCCGCThreshold,
-			pragmaMVCCCheckpointThreshold,
-			"foreign_keys",
-			"synchronous",
-			"busy_timeout",
-			"temp_store",
-			"cache_size",
-			"mmap_size",
-		},
+		MaxOpenConns: 4, MaxIdleConns: 4,
+		PragmaOrder: []string{journalModeKey, synchronousKey, busyTimeoutKey, foreignKeysKey, tempStoreKey, cacheSizeKey},
 		Pragmas: map[string]string{
-			"journal_mode": "'mvcc'",
-			// Turso keeps MVCC row versions in native memory until GC and
-			// checkpoint reclaim them. Its defaults (16384 versions, ~4 MB log)
-			// let a steady write stream sit at ~2x the RSS of these values at
-			// the same throughput; see lab/turso-memory/OUTCOME.md.
-			pragmaMVCCGCThreshold:         "1024",
-			pragmaMVCCCheckpointThreshold: "262144",
-			"synchronous":                 "NORMAL",
-			"foreign_keys":                "ON",
-			"busy_timeout":                "1000",
-			"temp_store":                  "MEMORY",
-			"cache_size":                  "-64000",   // 64MB
-			"mmap_size":                   "67108864", // 64MB
+			journalModeKey: walJournalMode, synchronousKey: "NORMAL", busyTimeoutKey: "5000",
+			foreignKeysKey: "ON", tempStoreKey: "MEMORY", cacheSizeKey: "-16000",
 		},
 	}
 }
 
-// DevelopmentConfig returns the standard Turso MVCC configuration.
-func DevelopmentConfig() *Config {
-	return DefaultConfig()
-}
+// DevelopmentConfig returns the standard SQLite WAL configuration.
+func DevelopmentConfig() *Config { return DefaultConfig() }
 
-// ProductionConfig returns the standard Turso MVCC configuration.
-func ProductionConfig() *Config {
-	return DefaultConfig()
-}
+// ProductionConfig returns the standard SQLite WAL configuration.
+func ProductionConfig() *Config { return DefaultConfig() }
 
-// TursoMVCCConfig returns a Turso configuration for concurrent write workloads.
-//
-// MVCC mode allows BEGIN CONCURRENT transactions to overlap across connections
-// in the one process that owns the database file.
-//
-// Turso MVCC does not support writes to WITHOUT ROWID tables. Schemas used with
-// this config must use normal rowid tables.
-func TursoMVCCConfig() *Config {
-	return DefaultConfig()
-}
-
-// WithTursoMVCC configures the database to use Turso with MVCC journal mode.
-func WithTursoMVCC() Option {
-	return WithConfig(TursoMVCCConfig())
-}
-
-// WithDriver is kept for source compatibility. go-sqlite always uses Turso MVCC.
-func (c *Config) WithDriver(name string) *Config {
-	c.Driver = DefaultDriver
-	c.WithPragma("journal_mode", "'mvcc'")
-	return c
-}
-
-// WithMaxOpenConns sets the maximum number of open connections
+// WithMaxOpenConns sets the maximum number of open reader connections
 func (c *Config) WithMaxOpenConns(n int) *Config {
 	c.MaxOpenConns = n
 	return c
 }
 
-// WithMaxIdleConns sets the maximum number of idle connections
+// WithMaxIdleConns sets the maximum number of idle reader connections
 func (c *Config) WithMaxIdleConns(n int) *Config {
 	c.MaxIdleConns = n
 	return c
 }
 
-// WithConnMaxLifetime sets the maximum lifetime for a connection
+// WithConnMaxLifetime sets the maximum lifetime for reader connections
 func (c *Config) WithConnMaxLifetime(d time.Duration) *Config {
 	c.ConnMaxLifetime = d
 	return c
@@ -144,14 +82,5 @@ func (c *Config) WithPragmaOrder(keys ...string) *Config {
 // WithStrictPragmas makes Open fail if any configured PRAGMA cannot be applied.
 func (c *Config) WithStrictPragmas(strict bool) *Config {
 	c.StrictPragmas = strict
-	return c
-}
-
-// WithMultiprocessWAL is kept for source compatibility.
-//
-// Deprecated: multiprocess WAL is incompatible with go-sqlite's MVCC contract.
-// Setting this option to true makes Open fail.
-func (c *Config) WithMultiprocessWAL(enabled bool) *Config {
-	c.EnableMultiprocessWAL = enabled
 	return c
 }

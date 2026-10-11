@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"sort"
 	"time"
-
-	"github.com/dnl-fm/go-sqlite/pkg/database"
 )
 
 // Run executes all pending migrations
@@ -60,9 +58,6 @@ func runMigration(ctx context.Context, db *sql.DB, m Migration) error {
 	err := m.Up(ctx, db)
 	if err != nil {
 		return fmt.Errorf("up migration failed: %w", err)
-	}
-	if validationErr := database.ValidateRowIDSchema(ctx, db); validationErr != nil {
-		return validationErr
 	}
 	duration := time.Since(start)
 
@@ -182,9 +177,6 @@ func rollbackMigration(ctx context.Context, db *sql.DB, m Migration) error {
 	err := m.Down(ctx, db)
 	if err != nil {
 		return fmt.Errorf("down migration failed: %w", err)
-	}
-	if validationErr := database.ValidateRowIDSchema(ctx, db); validationErr != nil {
-		return validationErr
 	}
 
 	// Remove migration record in a transaction

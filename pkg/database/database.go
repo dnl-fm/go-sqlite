@@ -1,217 +1,107 @@
+// Package database provides a single SQLite writer and a read-only reader pool.
 package database
 
 import (
 	"context"
 	"database/sql"
-	"database/sql/driver"
 	"errors"
 	"fmt"
-	"net/url"
-	"sort"
+	"maps"
+	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
+
+	_ "modernc.org/sqlite" // Register the pure-Go database/sql driver.
 )
 
-const mvccJournalMode = "mvcc"
-
-// Database wraps sql.DB and provides context-aware operations
+// Database owns a single writer connection and a read-only reader pool.
 type Database struct {
-	db     *sql.DB
+	reader *sql.DB
+	writer *sql.DB
 	config *Config
 	path   string
 	closed bool
 	mu     sync.RWMutex
+	reads  atomic.Int64
+	quiet  atomic.Bool
 }
 
-// Option is a functional option for configuring the Database
+// Option configures a Database before it opens.
 type Option func(*Database) error
 
-// WithDriver is kept for source compatibility. go-sqlite always uses Turso MVCC.
-func WithDriver(name string) Option {
-	return func(d *Database) error {
-		d.config.Driver = DefaultDriver
-		d.config.WithPragma("journal_mode", "'mvcc'")
-		return nil
-	}
-}
-
-// WithConfig sets a custom configuration
+// WithConfig sets a custom configuration.
 func WithConfig(cfg *Config) Option {
 	return func(d *Database) error {
 		if cfg == nil {
 			return ErrInvalidConfig
 		}
-		d.config = cfg
+		copyConfig := *cfg
+		copyConfig.Pragmas = maps.Clone(cfg.Pragmas)
+		copyConfig.PragmaOrder = slices.Clone(cfg.PragmaOrder)
+		d.config = &copyConfig
 		return nil
 	}
 }
 
-// Open creates a new Database connection with the given options
+// Open opens path in WAL mode. In-memory paths use one shared connection.
 func Open(ctx context.Context, path string, opts ...Option) (*Database, error) {
 	if path == "" {
 		return nil, ErrInvalidPath
 	}
-
-	db := &Database{
-		path:   path,
-		config: DefaultConfig(),
-		closed: false,
-	}
-
-	// Apply options
+	d := &Database{path: path, config: DefaultConfig()}
 	for _, opt := range opts {
-		err := opt(db)
-		if err != nil {
+		if err := opt(d); err != nil {
 			return nil, err
 		}
 	}
-	db.config.Driver = DefaultDriver
-	db.config.WithPragma("journal_mode", "'mvcc'")
-
-	if db.config.EnableMultiprocessWAL {
-		return nil, errors.New("multiprocess WAL is incompatible with go-sqlite MVCC")
-	}
-	if containsMultiprocessWAL(path) {
-		return nil, errors.New("DSN must not request experimental=multiprocess_wal with go-sqlite MVCC")
-	}
-
-	// Resolve the registered driver without opening a native connection.
-	registeredDB, err := sql.Open(db.config.Driver, path)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open database: %w", err)
-	}
-	registeredDriver := registeredDB.Driver()
-	err = registeredDB.Close()
-	if err != nil {
-		return nil, fmt.Errorf("failed to close driver lookup: %w", err)
-	}
-	sqlDB := sql.OpenDB(&pragmaConnector{driver: registeredDriver, path: path, config: db.config})
-
-	db.db = sqlDB
-
-	// Configure connection pool
-	db.db.SetMaxOpenConns(db.config.MaxOpenConns)
-	db.db.SetMaxIdleConns(db.config.MaxIdleConns)
-	db.db.SetConnMaxLifetime(db.config.ConnMaxLifetime)
-
-	// Verify connection
-	err = db.db.PingContext(ctx)
-	if err != nil {
-		sqlDB.Close()
-		return nil, fmt.Errorf("failed to ping database: %w", err)
-	}
-	if err := ValidateRowIDSchema(ctx, db.db); err != nil {
-		sqlDB.Close()
-		return nil, err
-	}
-
-	return db, nil
-}
-
-// pragmaConnector configures every native connection before the pool uses it.
-type pragmaConnector struct {
-	config *Config
-	driver driver.Driver
-	path   string
-}
-
-func (c *pragmaConnector) Driver() driver.Driver { return c.driver }
-
-func (c *pragmaConnector) Connect(ctx context.Context) (driver.Conn, error) {
-	if err := ctx.Err(); err != nil {
-		return nil, err
-	}
-	conn, err := c.driver.Open(c.path)
+	target, memory, err := databaseTarget(path)
 	if err != nil {
 		return nil, err
 	}
-	if err := c.applyPragmas(ctx, conn); err != nil {
-		_ = conn.Close()
+	if !memory {
+		if legacyErr := rejectLegacyFile(target.Path); legacyErr != nil {
+			return nil, legacyErr
+		}
+	}
+	pragmas, err := checkedPragmas(ctx, target, d.config)
+	if err != nil {
 		return nil, err
 	}
-	return conn, nil
-}
-
-func (c *pragmaConnector) applyPragmas(ctx context.Context, conn driver.Conn) error {
-	applied := make(map[string]bool, len(c.config.Pragmas))
-	for _, key := range c.config.PragmaOrder {
-		value, ok := c.config.Pragmas[key]
-		if !ok {
-			continue
-		}
-		if err := c.applyPragma(ctx, conn, key, value); err != nil {
-			return err
-		}
-		applied[key] = true
+	d.writer, err = sql.Open("sqlite", connectionDSN(target, pragmas, false))
+	if err != nil {
+		return nil, err
 	}
-
-	var remaining []string
-	for key := range c.config.Pragmas {
-		if !applied[key] {
-			remaining = append(remaining, key)
-		}
-	}
-	sort.Strings(remaining)
-	for _, key := range remaining {
-		if err := c.applyPragma(ctx, conn, key, c.config.Pragmas[key]); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (c *pragmaConnector) applyPragma(ctx context.Context, conn driver.Conn, key, value string) error {
-	query := fmt.Sprintf("PRAGMA %s = %s", key, value)
-	if isMVCCJournalModePragma(key, value) {
-		return verifyMVCCJournalMode(ctx, conn, query)
-	}
-
-	execer, ok := conn.(driver.ExecerContext)
-	var err error
-	if !ok {
-		err = errors.New("driver does not implement ExecerContext")
-	} else {
-		_, err = execer.ExecContext(ctx, query, nil)
+	d.writer.SetMaxOpenConns(1)
+	d.writer.SetMaxIdleConns(1)
+	d.writer.SetConnMaxLifetime(0)
+	var mode string
+	err = d.writer.QueryRowContext(ctx, "PRAGMA journal_mode").Scan(&mode)
+	if err == nil && !memory && !strings.EqualFold(mode, walJournalMode) {
+		err = fmt.Errorf("journal_mode is %q, want %s", mode, walJournalMode)
 	}
 	if err != nil {
-		if c.config.StrictPragmas {
-			return fmt.Errorf("set pragma %q: %w", query, err)
-		}
-		// Ignore pragma errors for compatibility. Some SQLite drivers or in-memory
-		// databases do not support every pragma.
+		return nil, errors.Join(err, d.writer.Close())
 	}
-	return nil
-}
-
-func verifyMVCCJournalMode(ctx context.Context, conn driver.Conn, query string) error {
-	queryer, ok := conn.(driver.QueryerContext)
-	if !ok {
-		return fmt.Errorf("set pragma %q: driver does not implement QueryerContext", query)
+	if memory {
+		d.reader = d.writer
+		return d, nil
 	}
-	rows, err := queryer.QueryContext(ctx, query, nil)
+	d.reader, err = sql.Open("sqlite", connectionDSN(target, pragmas, true))
 	if err != nil {
-		return fmt.Errorf("set pragma %q: %w", query, err)
+		return nil, errors.Join(err, d.writer.Close())
 	}
-	values := make([]driver.Value, len(rows.Columns()))
-	err = rows.Next(values)
-	closeErr := rows.Close()
-	if err != nil {
-		return fmt.Errorf("set pragma %q: %w", query, err)
+	readers := d.config.MaxOpenConns
+	if readers <= 0 {
+		readers = 4
 	}
-	if closeErr != nil {
-		return fmt.Errorf("set pragma %q: %w", query, closeErr)
+	d.reader.SetMaxOpenConns(readers)
+	d.reader.SetMaxIdleConns(d.config.MaxIdleConns)
+	d.reader.SetConnMaxLifetime(d.config.ConnMaxLifetime)
+	if err := d.reader.PingContext(ctx); err != nil {
+		return nil, errors.Join(err, d.reader.Close(), d.writer.Close())
 	}
-	if len(values) != 1 {
-		return fmt.Errorf("set pragma %q: expected one journal_mode column, got %d", query, len(values))
-	}
-	mode := fmt.Sprint(values[0])
-	if b, ok := values[0].([]byte); ok {
-		mode = string(b)
-	}
-	if !strings.EqualFold(mode, mvccJournalMode) {
-		return fmt.Errorf("set pragma %q: expected journal_mode %s, got %q", query, mvccJournalMode, mode)
-	}
-	return nil
+	return d, nil
 }
 
 // Query executes a query that returns rows
@@ -223,7 +113,7 @@ func (d *Database) Query(ctx context.Context, query string, args ...any) (*sql.R
 		return nil, ErrClosed
 	}
 
-	rows, err := d.db.QueryContext(ctx, query, args...) //nolint:sqlclosecheck // GO-SQLITE-1: caller owns row closing
+	rows, err := d.reader.QueryContext(ctx, query, args...) //nolint:sqlclosecheck // GO-SQLITE-1: caller owns row closing
 	if err != nil {
 		return nil, &QueryError{Query: query, Err: err}
 	}
@@ -238,7 +128,7 @@ func (d *Database) QueryOne(ctx context.Context, query string, args ...any) *sql
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 
-	return d.db.QueryRowContext(ctx, query, args...)
+	return d.reader.QueryRowContext(ctx, query, args...)
 }
 
 // Exec executes a command that doesn't return rows
@@ -249,11 +139,8 @@ func (d *Database) Exec(ctx context.Context, query string, args ...any) (sql.Res
 	if d.closed {
 		return nil, ErrClosed
 	}
-	if err := rejectWithoutRowIDSQL(query); err != nil {
-		return nil, &ExecError{Query: query, Err: err}
-	}
 
-	result, err := d.db.ExecContext(ctx, query, args...)
+	result, err := d.writer.ExecContext(ctx, query, args...)
 	if err != nil {
 		return nil, &ExecError{Query: query, Err: err}
 	}
@@ -270,7 +157,11 @@ func (d *Database) BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, e
 		return nil, ErrClosed
 	}
 
-	tx, err := d.db.BeginTx(ctx, opts)
+	pool := d.writer
+	if opts != nil && opts.ReadOnly {
+		pool = d.reader
+	}
+	tx, err := pool.BeginTx(ctx, opts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to begin transaction: %w", err)
 	}
@@ -288,7 +179,10 @@ func (d *Database) Close() error {
 	}
 
 	d.closed = true
-	return d.db.Close()
+	if d.reader == d.writer {
+		return d.writer.Close()
+	}
+	return errors.Join(d.reader.Close(), d.writer.Close())
 }
 
 // Path returns the database file path
@@ -296,44 +190,14 @@ func (d *Database) Path() string {
 	return d.path
 }
 
-func containsMultiprocessWAL(path string) bool {
-	_, rawQuery, ok := strings.Cut(path, "?")
-	if !ok {
-		return false
-	}
+// Config returns the configuration supplied to Open.
+func (d *Database) Config() *Config { return d.config }
 
-	query, err := url.ParseQuery(rawQuery)
-	if err != nil {
-		return false
-	}
-	for key, values := range query {
-		if !strings.EqualFold(key, "experimental") {
-			continue
-		}
-		for _, value := range values {
-			if strings.EqualFold(value, "multiprocess_wal") {
-				return true
-			}
-		}
-	}
-	return false
-}
+// DB returns the writer; generic consumers can safely use it for reads or writes.
+func (d *Database) DB() *sql.DB { return d.writer }
 
-func isMVCCJournalModePragma(key, value string) bool {
-	if !strings.EqualFold(key, "journal_mode") {
-		return false
-	}
-	normalized := strings.TrimSpace(strings.ToLower(value))
-	normalized = strings.Trim(normalized, `"'`)
-	return normalized == mvccJournalMode
-}
+// Writer returns the single-connection write pool.
+func (d *Database) Writer() *sql.DB { return d.writer }
 
-// Config returns the current configuration
-func (d *Database) Config() *Config {
-	return d.config
-}
-
-// DB returns the underlying sql.DB (for advanced usage)
-func (d *Database) DB() *sql.DB {
-	return d.db
-}
+// Reader returns the read-only pool (the shared writer for in-memory paths).
+func (d *Database) Reader() *sql.DB { return d.reader }

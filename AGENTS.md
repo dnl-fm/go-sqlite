@@ -2,75 +2,76 @@
 
 ## Stack
 
-- go
-- sqlite
+- Go
+- SQLite through `modernc.org/sqlite v1.60.1` (pure Go)
 
 ## Components
 
 | Name | Path | Type |
-|------|------|------|
-| migrate | `cmd/migrate/` | cli |
-| pkg | `pkg/` | lib |
+|---|---|---|
+| migrate | `cmd/migrate/` | CLI |
+| pkg | `pkg/` | Library |
 
 ## Commands
 
 ```bash
-# Test
 make test
+make lab-test # modernc writer and tenant labs
+make build # migrate CLI
 
-# Exploratory Turso labs
-make lab-test
-
-# Native-memory probes per Turso version (slow; see lab/turso-memory/OUTCOME.md)
+# Historical raw Turso evaluation, separate modules
 make lab-memory TURSO_VERSIONS="v0.7.2 v0.8.1"
-
-# Build migrate CLI
-make build
 ```
 
-## Turso Consumer Notes
+## Consumer notes
 
-Apps using `github.com/dnl-fm/go-sqlite` should treat Turso features by mode,
-not by marketing headline.
+One process owns each database file. Route every write through that process.
+`database.Open` uses one writer connection and a separate read-only pool (four
+connections by default). `DB()` and `Writer()` return the writer.
+`Reader()` returns the reader pool. `Query` and `QueryOne` use the reader.
+`Exec` and write transactions use the writer.
 
-- `database.Open`, `DefaultConfig`, `ProductionConfig`, and `DevelopmentConfig`
-  all use Turso MVCC. There is no supported old-WAL mode in this package.
-- Turso MVCC still means normal rowid tables only. `database.Open`,
-  `database.Exec`, and the migration runner enforce that requirement. Turso
-  0.6.0, 0.6.1, 0.7.0-pre.2, 0.7.0-pre.4, 0.7.0-pre.5, 0.7.0-pre.6,
-  0.7.0-pre.10, 0.7.0-pre.13, and final 0.7.0 through 0.7.2 can create
-  experimental plain-engine `WITHOUT ROWID` tables with
-  `?experimental=without_rowid`, but MVCC rejects writes to those tables.
-- Turso 0.7.2 fixes MVCC sequence bookkeeping leaking into user-visible change
-  counts. The 0.7.2 lab proves `AUTOINCREMENT` reports user-row changes only.
-- Every pooled connection gets the configured PRAGMAs (connector-based since
-  2026-10-07; before that only one of four did). Defaults include
-  `mvcc_gc_threshold = 1024` and `mvcc_checkpoint_threshold = 262144`, which
-  halve steady-state MVCC memory at Turso's throughput. Run long-lived services
-  with `MALLOC_ARENA_MAX=2`. Never hold `Rows` or a `Tx` open: an open reader
-  pins MVCC GC. Evidence: `lab/turso-memory/OUTCOME.md`.
-- Multi-statement writes on MVCC paths should use `ConcurrentTxRetry` or
-  `BEGIN CONCURRENT` on one reserved connection.
-- Keep Turso SQL placeholders positional (`?`) unless a consuming app has
-  explicit tests for named parameters on its exact driver path.
-- Turso 0.7 makes MVCC and multiprocess WAL mutually exclusive. This package
-  chooses MVCC and one owning process per file. `EnableMultiprocessWAL` and
-  `WithMultiprocessWAL` remain for source compatibility, but enabling either is
-  rejected when the database opens.
-- Agents and CLI tools read a live database through the owning app's
-  authenticated API or local admin socket. Prefer named inspection commands;
-  normal tools never open or write the canonical file directly.
-- Install `tursodb` on machines that inspect offline database artifacts. Use it
-  instead of system `sqlite3`, and only against an owner-produced snapshot or a
-  cleanly closed database. Never raw-copy a live Turso database as evidence.
-- Organize services so one writer process owns one physical DB file. Many
-  processes can write in parallel when each process has its own file. If several
-  services need to mutate the same file, route writes through one owner process
-  or an app-level queue.
+Use `Write` for multi-statement writes and read-modify-write transactions.
+Use `Queue` for sustained traffic, FIFO writes, or group commits with
+`synchronous=FULL`. Use only the supplied transaction inside each callback.
+Never call `Write`, `Queue.Submit`, or `Checkpoint` from a write callback.
 
-The executable evidence lives in `lab/turso-v060`, `lab/turso-v061`,
-`lab/turso-v070-pre2`, `lab/turso-v070-pre4`, `lab/turso-v070-pre5`,
-`lab/turso-v070-pre6`, `lab/turso-v070-pre10`, `lab/turso-v070-pre13`,
-`lab/turso-v070`, `lab/turso-v071`, and `lab/turso-v072`.
-When bumping consuming apps, run their normal test gate and add an app-local
-regression if they use Turso MVCC, `WITHOUT ROWID`, or live DB inspection.
+Close every `Rows` and transaction promptly. Open readers pin the WAL.
+For long reads, use `Read` and one timer with `Checkpoint(ctx, quiet)`.
+The checkpoint pauses new `Read` calls and returns `busy` if readers prevent
+truncation. Direct `Reader()` queries bypass that pause. Choose a quiet window
+that matches ordinary read duration. Inspect repeated busy results and WAL size.
+Do not disable automatic checkpoints without an explicit checkpoint owner.
+
+For `:memory:` and `file::memory:` databases, both roles share one connection.
+Do not hold rows or a transaction while another operation needs that connection.
+SQLite supports `WITHOUT ROWID` tables.
+
+The supported envelope comes from [the writer lab](lab/sqlite-writers/README.md):
+
+- One writer process per file.
+- Up to 1,000 sustained writes/s per database.
+- Bursts up to approximately 5,000 writes/s for a few seconds.
+- A write deadline of approximately one second, then `context.DeadlineExceeded`.
+- Fast overload rejection: HTTP 503 with `Retry-After` and client backoff with jitter.
+
+Set deadlines and admission limits in the consumer. The package does not impose
+a one-second deadline or implement HTTP responses. Keep load at or below half
+of measured capacity for tight latency tails. Run the lab on the real workload
+before relying on higher rates, larger transactions, or long reads.
+Several writer processes per file are outside this envelope.
+
+Prefer the owner's authenticated API or local admin socket for live inspection.
+Plain `sqlite3` supports read-only inspection of snapshots and live SQLite WAL
+databases. No special CLI is required. Never raw-copy an open database as a
+snapshot. Use an owner-produced snapshot or SQLite's backup operation.
+
+Before v0.8.0, convert Turso-format files with [cmd/turso-convert](cmd/turso-convert/).
+Stop the owner first. Convert to a new file, verify it, then switch the service.
+`Open` rejects a Turso MVCC header (bytes 18–19 are `0xff 0xff`) or a `-log`
+sidecar and names the converter in its error.
+
+The `lab/turso-*` modules and recorded results are historical upstream evidence.
+They do not define the current library contract. Current proof lives in
+`lab/sqlite-writers` and `lab/sqlite-tenants`. Read [the consumer guide](docs/consumer-guide.md)
+and [operations](docs/operations.md) before consumer upgrades.

@@ -22,13 +22,10 @@ func TestConfigDefaults(t *testing.T) {
 		t.Errorf("expected ConnMaxLifetime 0, got %v", cfg.ConnMaxLifetime)
 	}
 
-	if cfg.Pragmas["journal_mode"] != "'mvcc'" {
-		t.Errorf("expected journal_mode 'mvcc', got %s", cfg.Pragmas["journal_mode"])
+	if cfg.Pragmas["journal_mode"] != "WAL" {
+		t.Errorf("expected journal_mode WAL, got %s", cfg.Pragmas["journal_mode"])
 	}
 
-	if cfg.EnableMultiprocessWAL {
-		t.Error("DefaultConfig must not enable multiprocess WAL")
-	}
 }
 
 func TestConfigDevelopment(t *testing.T) {
@@ -38,13 +35,10 @@ func TestConfigDevelopment(t *testing.T) {
 		t.Errorf("expected MaxOpenConns 4, got %d", cfg.MaxOpenConns)
 	}
 
-	if cfg.Pragmas["journal_mode"] != "'mvcc'" {
-		t.Errorf("expected journal_mode 'mvcc', got %s", cfg.Pragmas["journal_mode"])
+	if cfg.Pragmas["journal_mode"] != "WAL" {
+		t.Errorf("expected journal_mode WAL, got %s", cfg.Pragmas["journal_mode"])
 	}
 
-	if cfg.EnableMultiprocessWAL {
-		t.Error("DevelopmentConfig must not enable multiprocess WAL")
-	}
 }
 
 func TestConfigProduction(t *testing.T) {
@@ -58,16 +52,6 @@ func TestConfigProduction(t *testing.T) {
 		t.Errorf("expected foreign_keys ON, got %s", cfg.Pragmas["foreign_keys"])
 	}
 
-	if cfg.EnableMultiprocessWAL {
-		t.Error("ProductionConfig must not enable multiprocess WAL")
-	}
-}
-
-func TestTursoMVCCConfigDoesNotEnableMultiprocessWAL(t *testing.T) {
-	cfg := TursoMVCCConfig()
-	if cfg.EnableMultiprocessWAL {
-		t.Error("TursoMVCCConfig must not enable multiprocess WAL")
-	}
 }
 
 func TestConfigChaining(t *testing.T) {
@@ -101,13 +85,13 @@ func TestConnectionPool(t *testing.T) {
 		WithMaxIdleConns(8).
 		WithConnMaxLifetime(3 * time.Minute)
 
-	db, err := Open(ctx, ":memory:", WithConfig(cfg))
+	db, err := Open(ctx, t.TempDir()+"/pool.db", WithConfig(cfg))
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
 	defer db.Close()
 
-	stats := db.DB().Stats()
+	stats := db.Reader().Stats()
 
 	if stats.MaxOpenConnections != 30 {
 		t.Errorf("expected MaxOpenConnections 30, got %d", stats.MaxOpenConnections)

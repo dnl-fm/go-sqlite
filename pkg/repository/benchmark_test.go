@@ -5,14 +5,13 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"os"
 	"strconv"
 	"sync"
 	"testing"
-	"time"
 
+	"github.com/dnl-fm/go-sqlite/pkg/database"
 	"github.com/dnl-fm/go-sqlite/pkg/query"
-	_ "turso.tech/database/tursogo"
+	_ "modernc.org/sqlite"
 )
 
 // Benchmarks
@@ -160,19 +159,12 @@ func BenchmarkTransaction(b *testing.B) {
 func setupConcurrentDB(t *testing.T) *sql.DB {
 	t.Helper()
 
-	tmpFile := fmt.Sprintf("/tmp/test_concurrent_%d.db", time.Now().UnixNano())
-	t.Cleanup(func() {
-		os.Remove(tmpFile)
-	})
-
-	db, err := sql.Open("turso", tmpFile)
+	owner, err := database.Open(context.Background(), t.TempDir()+"/concurrent.db")
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}
-
-	_, _ = db.Exec("PRAGMA journal_mode='mvcc'")
-	_, _ = db.Exec("PRAGMA busy_timeout=5000")
-	db.SetMaxOpenConns(32)
+	t.Cleanup(func() { owner.Close() })
+	db := owner.Writer()
 
 	_, err = db.Exec(`
 		CREATE TABLE users (
@@ -381,7 +373,7 @@ func TestMemoryLargeResultSet(t *testing.T) {
 func setupBenchDB(b *testing.B) *sql.DB {
 	b.Helper()
 
-	db, err := openTursoMemoryBench(b)
+	db, err := openSQLiteMemoryBench(b)
 	if err != nil {
 		b.Fatalf("failed to open db: %v", err)
 	}
@@ -400,16 +392,13 @@ func setupBenchDB(b *testing.B) *sql.DB {
 	return db
 }
 
-func openTursoMemoryBench(b *testing.B) (*sql.DB, error) {
+func openSQLiteMemoryBench(b *testing.B) (*sql.DB, error) {
 	b.Helper()
-	db, err := sql.Open("turso", ":memory:")
+	db, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
 		return nil, err
 	}
-	if _, err := db.Exec(`PRAGMA journal_mode='mvcc'`); err != nil {
-		db.Close()
-		return nil, err
-	}
+	db.SetMaxOpenConns(1)
 	return db, nil
 }
 

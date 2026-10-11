@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"time"
 )
 
 const steadyCleanupTicks int64 = 250
@@ -25,22 +24,14 @@ func steady(o options, r *recorder) (verdict, metrics, threshold string, runErr 
 	if o.probe == "mvcc-open-reader" {
 		n = 2
 	}
-	var db *sql.DB
-	var conns []*sql.Conn
-	var err error
+	db, conns, err := openPool(o.db, mode, n)
 	pragmas := ""
-	if o.probe == "gosqlite-steady" {
-		db, conns, pragmas, err = openGoSQLitePool(o, r)
-		n = len(conns)
-	} else {
-		db, conns, err = openPool(o.db, mode, n)
-	}
 	if err != nil {
 		return "", "", threshold, err
 	}
 	defer func() { runErr = errors.Join(runErr, closePool(db, conns)) }()
 	c, ctx := conns[0], context.Background()
-	if mode == "mvcc" && o.probe != "gosqlite-steady" {
+	if mode == "mvcc" {
 		// Configure the shared MvStore before schema writes or any workload.
 		pragmas, err = steadyPragmas(ctx, c, o.probe == "mvcc-forced-gc")
 		if err != nil {
@@ -48,9 +39,6 @@ func steady(o options, r *recorder) (verdict, metrics, threshold string, runErr 
 		}
 	}
 	for _, conn := range conns {
-		if o.probe == "gosqlite-steady" {
-			break // Keep database.DefaultConfig; do not apply raw-driver settings.
-		}
 		for _, q := range []string{"PRAGMA synchronous = NORMAL", "PRAGMA cache_size = -64000"} {
 			if _, err := conn.ExecContext(ctx, q); err != nil {
 				return "", "", threshold, err
@@ -105,7 +93,6 @@ func steady(o options, r *recorder) (verdict, metrics, threshold string, runErr 
 		return fmt.Sprintf("%s live_samples=%d security_events=%d deleted_samples=%d reader_open=%t", config, samples, events, deleted, reader != nil), nil
 	}
 	ticks := o.rows / 40
-	started := time.Now()
 	var endDetail string
 	for tick := int64(1); tick <= ticks; tick++ {
 		if err := writeTick(tick); err != nil {
@@ -144,15 +131,11 @@ func steady(o options, r *recorder) (verdict, metrics, threshold string, runErr 
 			fmt.Fprintf(os.Stderr, "probe=%s rows=%d rss_anon_kib=%d %s\n", o.probe, rows, m.rss, detail)
 		}
 	}
-	elapsed := time.Since(started).Seconds()
 	verdict, bpr, err := steadyVerdict(halfRows, o.rows, half.rss, end.rss)
 	if err != nil {
 		return "", "", threshold, err
 	}
 	metrics = fmt.Sprintf("bytes_per_row=%.2f rss_end_mib=%.3f rows_half=%d rows_end=%d rss_half_kib=%d rss_end_kib=%d live_samples=%d security_events=%d deleted_samples=%d %s", bpr, float64(end.rss)/1024, halfRows, o.rows, half.rss, end.rss, samples, events, deleted, config)
-	if o.probe == "gosqlite-steady" {
-		metrics += fmt.Sprintf(" elapsed_s=%.6f inserts_per_s=%.3f", elapsed, float64(o.rows)/elapsed)
-	}
 	if o.trim {
 		trimmed, err := r.trimSample("rss_after_trim", o.rows, 0, n, endDetail)
 		if err != nil {

@@ -1,83 +1,36 @@
-# Migration System - Quick Start
+# Migration quick start
 
-## 60-Second Setup
+The runner uses registered Go functions. Import the app's migration package
+before the runner starts.
 
-### 1. Create Migration
-```bash
-export DATABASE_URL="file:./app.db"
-migrate create add_users_table
-```
+1. Generate a migration:
 
-### 2. Edit Generated File
-```go
-// migrations/20251107123456_add_users_table.go
-func up20251107123456(ctx context.Context, db *sql.DB) error {
-    _, err := db.ExecContext(ctx, `
-        CREATE TABLE users (
-            id TEXT PRIMARY KEY,
-            email TEXT NOT NULL UNIQUE,
-            name TEXT NOT NULL
-        )
-    `)
-    return err
-}
+   ```bash
+   export DATABASE_URL="file:./app.db"
+   migrate create add_users_table
+   ```
 
-func down20251107123456(ctx context.Context, db *sql.DB) error {
-    _, err := db.ExecContext(ctx, `DROP TABLE users`)
-    return err
-}
-```
+2. Implement the generated `Up` and `Down` functions.
+3. Compile the migration package into the app's runner.
+4. Run pending migrations through the writer:
 
-### 3. Run Migration
-```bash
-migrate up
-```
+   ```go
+   import (
+       _ "example.com/app/migrations"
+       "github.com/dnl-fm/go-sqlite/pkg/database"
+       "github.com/dnl-fm/go-sqlite/pkg/migrations"
+   )
 
-### 4. Check Status
-```bash
-migrate status
-```
+   db, err := database.Open(ctx, "app.db")
+   if err != nil {
+       return err
+   }
+   defer db.Close()
+   err = migrations.Run(ctx, db.Writer())
+   ```
 
-## Common Commands
+5. Exercise both migration directions with the app's test gate.
 
-```bash
-# Create new migration
-migrate create <name>
-
-# Run all pending
-migrate up
-
-# Show status
-migrate status
-
-# Rollback last
-migrate down
-
-# Rollback to version
-migrate down 20251107123456
-```
-
-## Programmatic Usage
-
-```go
-import (
-    _ "github.com/fightbulc/go-turso-kit/migrations"
-    "github.com/fightbulc/go-turso-kit/pkg/migrations"
-)
-
-// Run migrations
-db, _ := sql.Open("turso", "file:./app.db")
-err := migrations.Run(context.Background(), db)
-```
-
-## Key Points
-
-- ✅ Migrations run in timestamp order
-- ✅ Safe to run multiple times (idempotent)
-- ✅ Always implement both Up and Down
-- ✅ Test rollback before deploying
-- ✅ Keep migrations small and focused
-
-## Need Help?
-
-See `README.md` for complete documentation.
+Versions run in order. Successful versions do not run again.
+Each migration function owns any transaction it needs.
+See [the migration README](README.md) for the API and CLI commands.

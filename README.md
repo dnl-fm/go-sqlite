@@ -4,7 +4,7 @@ Type-safe SQLite toolkit for Go.
 
 ## Features
 
-- **Database** - Connection wrapper with Turso MVCC, foreign keys, and busy timeout
+- **Database** - One writer, read-only readers, WAL, and pure-Go SQLite
 - **Named Parameter Queries** - SQL with `:name` placeholders
 - **Repository Pattern** - Generic CRUD with automatic struct scanning
 - **Migrations** - Schema versioning with up/down functions
@@ -34,7 +34,7 @@ make consumer-build
 
 `--check` exits non-zero when published pins are behind the target. Local
 replacements are reported but are not treated as upgradeable pins. Use
-`make consumer-scan ARGS="--json"` for the repository shortcut; override its
+`make consumer-scan ARGS="--json"` for the repository shortcut. Override its
 root with `CONSUMER_ROOT=/path/to/workspace`.
 
 ## Quick Start
@@ -109,12 +109,11 @@ users, err := repo.FindByQuery(ctx, q)
 
 ### 5. Transactions
 
-Use `WithConcurrentTx` for Turso MVCC write transactions. It runs
-`BEGIN CONCURRENT` on a reserved connection so overlapping writes on different
-pooled connections can proceed inside the owning process.
+Use `WithTx` on a repository built with `db.Writer()`. Writes wait for the
+single writer connection in Go. Each write transaction starts with `BEGIN IMMEDIATE`.
 
 ```go
-err := repo.WithConcurrentTx(ctx, func(tx *repository.Repository[User, string]) error {
+err := repo.WithTx(ctx, func(tx *repository.Repository[User, string]) error {
     q1, _ := query.Build(
         "INSERT INTO users (id, email, name) VALUES (:id, :email, :name)",
         map[string]any{"id": "1", "email": "alice@example.com", "name": "Alice"},
@@ -127,7 +126,9 @@ err := repo.WithConcurrentTx(ctx, func(tx *repository.Repository[User, string]) 
 })
 ```
 
-`WithTx` still exists for portable `database/sql` transactions, but it is deprecated for Turso MVCC write concurrency because it starts a regular `BEGIN`.
+For lower-level operations, use `db.Write(ctx, func(tx *sql.Tx) error { ... })`.
+Use only the supplied transaction inside the callback. A nil result commits.
+An error or panic rolls back. The panic propagates.
 
 ### 6. Migrations
 
@@ -193,82 +194,91 @@ cycles := z.Cycles(12, zeit.Monthly)
 
 ## Database Configuration
 
-`database.Open` always opens through the Turso driver and enables MVCC. There is
-no supported old-WAL mode in this package.
+v0.8.0 uses `modernc.org/sqlite v1.60.1`. File databases have one writer
+connection and a read-only reader pool (four connections by default).
+Transactions on the writer start with `BEGIN IMMEDIATE`, so a read followed
+by an update has no lost updates. Writers wait in Go for the connection.
+
+| Helper | Pool |
+|---|---|
+| `Query`, `QueryOne`, `Read` | Reader |
+| `Exec`, `Write`, `BeginTx` | Writer (`ReadOnly: true` uses the reader) |
+| `DB()`, `Writer()` | Writer |
+| `Reader()` | Read-only reader pool |
+
+`DB()` remains a generic handle. Repositories use the handle you supply.
+Build read repositories with `db.Reader()` and write repositories with
+`db.Writer()` to retain the split.
+
+For `:memory:` and `file::memory:` databases, both roles share one connection.
+Writes and reads see the same data. Close rows and transactions before another
+operation needs that connection.
+
+Every connection gets the configured PRAGMAs through the modernc DSN:
 
 | PRAGMA | Default | Purpose |
-|--------|---------|---------|
-| `journal_mode` | `'mvcc'` | Concurrent writes across pooled connections |
-| `synchronous` | `NORMAL` | Balanced durability/speed |
-| `foreign_keys` | `ON` | Enforce referential integrity |
-| `busy_timeout` | `1000` | Wait before locked error |
-| `temp_store` | `MEMORY` | Temp tables in RAM |
-| `cache_size` | `-64000` | 64MB page cache |
-| `mmap_size` | `67108864` | 64MB memory-mapped I/O |
+|---|---|---|
+| `journal_mode` | `WAL` | Reads and writes can proceed together |
+| `synchronous` | `NORMAL` | Application-crash durability |
+| `busy_timeout` | `5000` | Lock wait in milliseconds |
+| `foreign_keys` | `ON` | Referential integrity |
+| `temp_store` | `MEMORY` | Temporary tables in memory |
+| `cache_size` | `-16000` | 16,000 KiB page cache per connection |
 
 ```go
-// Default config (recommended)
-db, _ := database.Open(ctx, "app.db")
+db, err := database.Open(ctx, "app.db")
 
-// ProductionConfig is the same MVCC baseline.
-db, _ := database.Open(ctx, "app.db",
-    database.WithConfig(database.ProductionConfig()),
-)
-
-// Custom pragmas
-cfg := database.DefaultConfig().WithPragma("cache_size", "-64000")
-db, _ := database.Open(ctx, "app.db", database.WithConfig(cfg))
+cfg := database.DefaultConfig().WithPragma("synchronous", "FULL")
+db, err = database.Open(ctx, "app.db", database.WithConfig(cfg))
 ```
 
-Turso 0.7 makes MVCC and multiprocess WAL mutually exclusive. This package
-chooses MVCC: one application process owns each database file, while its pooled
-connections provide same-process concurrency. `EnableMultiprocessWAL` and
-`WithMultiprocessWAL` remain for source compatibility, but `Open` rejects them.
+`MaxOpenConns`, `MaxIdleConns`, and `ConnMaxLifetime` configure the reader
+pool. The writer always keeps one connection with no lifetime limit.
+`DefaultConfig`, `ProductionConfig`, and `DevelopmentConfig` use the same WAL
+baseline. `Open` copies the config. It preflights PRAGMAs in the requested order, then
+adds the remaining names in sorted order. Strict mode aborts on PRAGMA errors.
+Non-strict mode omits rejected PRAGMAs. The DSN reapplies accepted PRAGMAs on
+each connection. Modernc determines their final order. See
+[database](pkg/database/README.md) for complete config semantics.
+SQLite supports `WITHOUT ROWID` tables.
 
-Agents and CLI tools read live state through the owning app's authenticated API
-or local admin socket. For offline forensics, inspect an owner-produced snapshot
-or a cleanly closed database with `tursodb`; never raw-copy a live Turso file.
-See [Turso Operations](docs/turso-operations.md) and the
-[consumer agent-access contract](docs/agent-api.md).
+### Write traffic and WAL
 
-### Turso MVCC
+One process owns each file. Use `Write` for short transactions and `Queue`
+for sustained traffic or FIFO service. The queue batches up to 64 operations
+with a default wait of 1 ms. Each operation has its own savepoint.
+`Queue.Submit` returns success after the batch commits. Close the queue before
+the database to drain accepted operations.
 
-Turso 0.6.0 added experimental plain-engine `WITHOUT ROWID` support behind `?experimental=without_rowid`, and the 0.6.1 / 0.7 prerelease / stable 0.7.0 through 0.7.2 labs keep the same boundary: MVCC still rejects writes to those tables. This package requires normal rowid tables. `database.Open` validates existing schema, `database.Exec` rejects `WITHOUT ROWID` SQL, and the migration runner validates the schema after each migration. Turso 0.7.2 also fixes MVCC sequence bookkeeping leaking into user-visible change counts; the 0.7.2 lab proves `AUTOINCREMENT` reports user-row changes only. Rebuild existing plain SQLite databases into normal rowid tables before opening them with this package. The current probes live in `lab/turso-v060`, `lab/turso-v061`, `lab/turso-v070-pre2`, `lab/turso-v070-pre4`, `lab/turso-v070-pre5`, `lab/turso-v070-pre6`, `lab/turso-v070-pre10`, `lab/turso-v070-pre13`, `lab/turso-v070`, `lab/turso-v071`, and `lab/turso-v072`.
+`NORMAL` survives an application crash. Recent commits can be lost after an
+OS crash or power loss. Use `FULL` when acknowledgements must survive power
+loss, and use the queue to share the cost of each fsync.
 
-Install `tursodb` anywhere operators or tests run or inspect database files:
+Close every `Rows` and transaction promptly. Long reads pin the WAL.
+Use `Read` for long reads and `Checkpoint(ctx, quiet)` from one timer to
+create a quiet window. Repeated `busy` results mean readers still prevent
+truncation. Direct reader queries bypass that window.
 
-```bash
-curl --proto '=https' --tlsv1.2 -LsSf \
-  https://github.com/tursodatabase/turso/releases/latest/download/turso_cli-installer.sh | sh
-source "$HOME/.turso/env"
-```
+The [consumer guide](docs/consumer-guide.md) defines the supported envelope:
+up to 1,000 sustained writes/s, brief bursts around 5,000/s, and write deadlines
+around one second. Consumers impose deadlines and fast overload rejection.
+Measure the real workload before relying on higher rates or larger transactions.
+Evidence lives in [the writer lab](lab/sqlite-writers/README.md).
 
-Use `tursodb` instead of system `sqlite3` for offline inspection. It can read
-normal SQLite databases and is required for Turso-format databases; plain
-`sqlite3` can reject valid Turso files as "file is not a database". Do not open
-the canonical file while its MVCC owner is running. Ask the service to produce
-a snapshot, or stop it cleanly first.
+Prefer the owner's authenticated API or local admin socket for live inspection.
+Plain `sqlite3` reads snapshots and live SQLite WAL databases safely in read-only
+mode. Use SQLite backup or an owner-produced snapshot instead of copying an
+open file. See [operations](docs/operations.md) and [agent access](docs/agent-api.md).
 
-```bash
-tursodb snapshot.db "PRAGMA integrity_check;"
-tursodb snapshot.db ".tables"
-```
+### Upgrading from v0.7.x
 
-Process layout matters. One Go process can own one database file and use MVCC
-with a normal connection pool. Many processes can write in parallel when each
-process owns a different file, because there is no shared WAL file to lock.
-Several Go writer processes against the same physical file are not a supported
-shape here; route those writes through one owner process, split the files, or
-put an app-level queue in front of the file.
-
-For lower-level code, use `database.ConcurrentTx` or `database.ConcurrentTxRetry`:
-
-```go
-err := database.ConcurrentTxRetry(ctx, db.DB(), 5, func(tx database.ConnTx) error {
-    _, err := tx.ExecContext(ctx, "INSERT INTO hits (val) VALUES (?)", 1)
-    return err
-})
-```
+The API and storage format change together. Convert Turso-format files with
+[cmd/turso-convert](cmd/turso-convert/) before the new service opens them.
+Stop the owner, convert to a new file, verify it, then switch the service.
+`Open` rejects an MVCC header or `-log` sidecar with a converter pointer.
+The [upgrade guide](docs/consumer-guide.md#upgrading-from-v07x) maps removed APIs
+and gives the conversion procedure. Historical `lab/turso-*` modules remain
+on disk for recorded evidence. `make lab-test` runs the modernc labs.
 
 ## Migrations CLI
 
@@ -333,7 +343,6 @@ func down20251210123456(ctx context.Context, db *sql.DB) error {
 | `pkg/id/ulid` | Time-sortable unique IDs |
 | `pkg/id/nanoid` | Compact random IDs |
 | [`zeit-go`](https://github.com/dnl-fm/zeit-go) | Timezone handling and billing cycles (external) |
-| `pkg/driver/turso` | Turso database/sql driver registration |
 
 ## Examples
 

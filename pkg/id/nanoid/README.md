@@ -21,13 +21,13 @@ NanoID is a tiny, secure, URL-friendly unique string ID generator with:
 ## Installation
 
 ```bash
-go get github.com/fightbulc/go-turso-kit/pkg/id/nanoid
+go get github.com/dnl-fm/go-sqlite/pkg/id/nanoid
 ```
 
 ## Quick Start
 
 ```go
-import "github.com/fightbulc/go-turso-kit/pkg/id/nanoid"
+import "github.com/dnl-fm/go-sqlite/pkg/id/nanoid"
 
 // Generate NanoID with default settings
 id := nanoid.New()

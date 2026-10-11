@@ -11,7 +11,7 @@ import (
 	"text/template"
 	"time"
 
-	_ "github.com/dnl-fm/go-sqlite/pkg/driver/turso"
+	"github.com/dnl-fm/go-sqlite/pkg/database"
 	"github.com/dnl-fm/go-sqlite/pkg/migrations"
 )
 
@@ -31,27 +31,19 @@ func openDB() (*sql.DB, error) {
 		return nil, err
 	}
 
-	db, err := sql.Open("turso", url)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	db, err := database.Open(ctx, url)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
-
-	// Verify connection
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	if _, err := db.ExecContext(ctx, "PRAGMA journal_mode='mvcc'"); err != nil {
-		db.Close()
-		return nil, fmt.Errorf("failed to enable Turso MVCC: %w", err)
+	// The migration CLI uses only the writer; release the unused reader pool.
+	if db.Reader() != db.Writer() {
+		if err := db.Reader().Close(); err != nil {
+			return nil, errors.Join(err, db.Close())
+		}
 	}
-
-	pingErr := db.PingContext(ctx)
-	if pingErr != nil {
-		db.Close()
-		return nil, fmt.Errorf("failed to ping database: %w", pingErr)
-	}
-
-	return db, nil
+	return db.Writer(), nil
 }
 
 // runUp runs all pending migrations

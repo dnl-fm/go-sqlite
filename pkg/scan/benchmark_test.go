@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"testing"
 
-	_ "turso.tech/database/tursogo"
+	_ "modernc.org/sqlite"
 )
 
 // Benchmarks for scan package
@@ -150,7 +150,7 @@ func BenchmarkFieldCacheHit(b *testing.B) {
 func setupBenchDB(b *testing.B, rowCount int) *sql.DB {
 	b.Helper()
 
-	db, err := openTursoMemoryBench(b)
+	db, err := openSQLiteMemoryBench(b)
 	if err != nil {
 		b.Fatalf("failed to open db: %v", err)
 	}
@@ -178,15 +178,12 @@ func setupBenchDB(b *testing.B, rowCount int) *sql.DB {
 	return db
 }
 
-func openTursoMemoryBench(b *testing.B) (*sql.DB, error) {
+func openSQLiteMemoryBench(b *testing.B) (*sql.DB, error) {
 	b.Helper()
-	db, err := sql.Open("turso", ":memory:")
+	db, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
 		return nil, err
 	}
-	if _, err := db.Exec(`PRAGMA journal_mode='mvcc'`); err != nil {
-		db.Close()
-		return nil, err
-	}
+	db.SetMaxOpenConns(1)
 	return db, nil
 }

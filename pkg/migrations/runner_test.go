@@ -3,7 +3,6 @@ package migrations
 import (
 	"context"
 	"database/sql"
-	"strings"
 	"testing"
 )
 
@@ -108,7 +107,7 @@ func TestRun(t *testing.T) {
 	}
 }
 
-func TestRunRejectsWithoutRowIDMigration(t *testing.T) {
+func TestRunSupportsWithoutRowIDMigration(t *testing.T) {
 	Reset()
 	defer Reset()
 
@@ -129,13 +128,13 @@ func TestRunRejectsWithoutRowIDMigration(t *testing.T) {
 		},
 	})
 
-	err := Run(ctx, db)
-	if err == nil {
-		t.Fatal("expected WITHOUT ROWID migration to fail")
+	if err := Run(ctx, db); err != nil {
+		t.Fatal(err)
 	}
-	if !strings.Contains(err.Error(), "WITHOUT ROWID") && !strings.Contains(err.Error(), "requires rowid tables") {
-		t.Fatalf("expected rowid requirement error, got %v", err)
+	if _, err := db.ExecContext(ctx, "INSERT INTO lookup VALUES ('key')"); err != nil {
+		t.Fatal(err)
 	}
+
 }
 
 // TestRollback tests rolling back migrations

@@ -20,13 +20,13 @@ ULIDs are 128-bit identifiers that are:
 ## Installation
 
 ```bash
-go get github.com/fightbulc/go-turso-kit/pkg/id/ulid
+go get github.com/dnl-fm/go-sqlite/pkg/id/ulid
 ```
 
 ## Quick Start
 
 ```go
-import "github.com/fightbulc/go-turso-kit/pkg/id/ulid"
+import "github.com/dnl-fm/go-sqlite/pkg/id/ulid"
 
 // Generate ULID
 id := ulid.New()

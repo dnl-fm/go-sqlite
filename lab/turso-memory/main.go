@@ -20,9 +20,7 @@ import (
 
 type options struct {
 	probe, db, out                  string
-	label                           string
 	rows                            int64
-	mvccGC, mvccCheckpoint          int64
 	sizeMB, passes, conns, cacheKiB int
 	trim                            bool
 }
@@ -40,9 +38,6 @@ func main() {
 	flag.StringVar(&o.probe, "probe", "", "probe name")
 	flag.StringVar(&o.db, "db", "lab.db", "database path")
 	flag.StringVar(&o.out, "out", ".", "output directory")
-	flag.StringVar(&o.label, "label", "", "gosqlite-steady evidence label")
-	flag.Int64Var(&o.mvccGC, "mvcc-gc-threshold", -1, "gosqlite-steady GC threshold (unset at -1)")
-	flag.Int64Var(&o.mvccCheckpoint, "mvcc-checkpoint-threshold", -1, "gosqlite-steady checkpoint bytes (unset at -1)")
 	flag.Int64Var(&o.rows, "rows", 300000, "sample rows, a positive multiple of 40 (600000 for steady/GC/reader probes)")
 	flag.BoolVar(&o.trim, "trim", false, "sample after glibc malloc_trim for steady/GC and vacuum probes")
 	flag.IntVar(&o.sizeMB, "size-mb", 150, "approximate database size in MiB")
@@ -69,7 +64,7 @@ func main() {
 		verdict = "ERROR"
 		metrics = "message=" + err.Error()
 	}
-	if writeErr := summary(o.out, o.evidenceName(), verdict, metrics, threshold); writeErr != nil {
+	if writeErr := summary(o.out, o.probe, verdict, metrics, threshold); writeErr != nil {
 		err = errors.Join(err, writeErr)
 	}
 	if err != nil {
@@ -78,29 +73,20 @@ func main() {
 }
 func defaultRows(probe string) int64 {
 	switch probe {
-	case "mvcc-steady", "wal-steady", "mvcc-forced-gc", "mvcc-open-reader", "gosqlite-steady":
+	case "mvcc-steady", "wal-steady", "mvcc-forced-gc", "mvcc-open-reader":
 		return 600000
 	default:
 		return 300000
 	}
 }
 func fail(err error) { fmt.Fprintln(os.Stderr, err); os.Exit(1) }
-func (o options) evidenceName() string {
-	if o.probe == "gosqlite-steady" && o.label != "" {
-		return o.probe + "-" + o.label
-	}
-	return o.probe
-}
 func run(o options) (verdict, metrics, threshold string, runErr error) {
-	if o.label != "" && (o.probe != "gosqlite-steady" || strings.ContainsAny(o.label, "/\\") || o.label == "." || o.label == "..") {
-		return "", "", "", errors.New("-label must be a filename label for gosqlite-steady")
-	}
 	switch o.probe {
-	case "mvcc-growth", "wal-growth", "mvcc-growth-checkpoint", "mvcc-growth-1conn", "mvcc-steady", "wal-steady", "mvcc-forced-gc", "mvcc-open-reader", "gosqlite-steady", "build", "vacuum-into", "cache-size":
+	case "mvcc-growth", "wal-growth", "mvcc-growth-checkpoint", "mvcc-growth-1conn", "mvcc-steady", "wal-steady", "mvcc-forced-gc", "mvcc-open-reader", "build", "vacuum-into", "cache-size":
 	default:
 		return "", "", "", fmt.Errorf("unknown probe %q", o.probe)
 	}
-	f, err := os.Create(filepath.Join(o.out, o.evidenceName()+".csv"))
+	f, err := os.Create(filepath.Join(o.out, o.probe+".csv"))
 	if err != nil {
 		return "", "", "", err
 	}
@@ -116,7 +102,7 @@ func run(o options) (verdict, metrics, threshold string, runErr error) {
 		return vacuum(o, r)
 	case "cache-size":
 		return cache(o, r)
-	case "mvcc-steady", "wal-steady", "mvcc-forced-gc", "mvcc-open-reader", "gosqlite-steady":
+	case "mvcc-steady", "wal-steady", "mvcc-forced-gc", "mvcc-open-reader":
 		return steady(o, r)
 	default:
 		return growth(o, r)

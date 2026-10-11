@@ -1,134 +1,121 @@
 # database
 
-Connection-local PRAGMAs must reach every connection, or pooled queries can
-lose foreign-key enforcement and use different timeouts.
-
-The `database` package configures each native Turso connection before the pool
-uses it, including connections created later. It validates rowid-table schema
-and exposes context-aware query helpers.
-
-Use this package instead of opening SQLite directly in Go services.
-
-## Default Contract
+SQLite WAL has one writer. This package makes that limit explicit: one permanent
+writer connection and a separate read-only pool, using `modernc.org/sqlite`.
+Writers wait in Go instead of racing inside SQLite's lock handler.
 
 ```go
 db, err := database.Open(ctx, "app.db")
 if err != nil {
-	return err
+    return err
 }
 defer db.Close()
 ```
 
-`database.Open`, `DefaultConfig`, `ProductionConfig`, and `DevelopmentConfig`
-use Turso MVCC. There is no supported old-WAL or modernc path in this package.
+`Query` and `QueryOne` use the reader. `Exec` and `BeginTx` use the writer;
+`BeginTx` with `ReadOnly: true` uses the reader. `DB()` and `Writer()` return
+the writer, so existing repositories and migrations can use them safely.
+`Reader()` is enforced read-only by SQLite's `mode=ro`, even if a statement
+turns `query_only` off.
 
-Turso 0.7 makes MVCC and multiprocess WAL mutually exclusive. This package
-chooses MVCC and one owning process per physical database file.
-
-## Inspection
-
-Live inspection goes through the owning service's authenticated API or local
-admin socket. The library does not implement that service route; consuming apps
-must expose the named reads their operators and agents need.
-
-Install `tursodb` on machines that inspect offline Turso-backed files. Use it
-instead of system `sqlite3`, and only against an owner-produced snapshot or a
-cleanly closed database.
-
-```bash
-tursodb snapshot.db "PRAGMA integrity_check;"
-tursodb snapshot.db ".tables"
-```
-
-Never raw-copy a live Turso database and call the result evidence.
+`:memory:`, `file::memory:` and `mode=memory` URI paths share one permanent
+`*sql.DB` connection for both roles. They ignore reader pool settings. Their
+reader handle can write; SQLite cannot open a separate read-only in-memory
+connection that shares this private database. Finish each transaction before
+using another public helper on these paths.
 
 ## Configuration
 
+`DefaultConfig`, `DevelopmentConfig` and `ProductionConfig` have the same defaults:
+
+| Setting | Default | Applies to |
+|---------|---------|------------|
+| `MaxOpenConns` / `MaxIdleConns` | 4 / 4 | Reader pool |
+| `ConnMaxLifetime` | 0 | Reader pool |
+| `journal_mode` | WAL | Both pools; required for files |
+| `synchronous` | NORMAL | Both pools |
+| `busy_timeout` | 5000 ms | Both pools |
+| `foreign_keys` | ON | Both pools |
+| `temp_store` | MEMORY | Both pools |
+| `cache_size` | -16000 | Both pools; about 16 MB per connection |
+
+The writer always has one open connection, one idle connection and no lifetime
+limit. Nonpositive `MaxOpenConns` means four readers. `Open` copies the config.
+
 ```go
 cfg := database.DefaultConfig().
-	WithMaxOpenConns(32).
-	WithMaxIdleConns(16).
-	WithPragma("busy_timeout", "5000")
-
+    WithMaxOpenConns(8).
+    WithMaxIdleConns(8).
+    WithPragma("synchronous", "FULL").
+    WithStrictPragmas(true)
 db, err := database.Open(ctx, "app.db", database.WithConfig(cfg))
 ```
 
-`EnableMultiprocessWAL` and `WithMultiprocessWAL` remain only for source
-compatibility. Enabling multiprocess WAL is rejected when `Open` applies the
-package's MVCC contract:
+`WithPragmaOrder` sets startup validation order; remaining keys follow in sorted
+order. By default, `Open` omits rejected PRAGMAs. With `WithStrictPragmas(true)`,
+`Open` fails startup instead. Every accepted setting travels in modernc's `_pragma` DSN
+parameters and reaches every replacement connection. The driver applies
+`busy_timeout` first, then sorts the others; it does not preserve a custom
+per-connection order. Files must report `journal_mode=wal` after opening.
+
+`NORMAL` survives application crashes but can lose recent commits after power
+loss. Use `FULL` when acknowledged writes must survive power loss.
+
+## Transactions and batching
 
 ```go
-cfg := database.DefaultConfig().WithMultiprocessWAL(true)
-db, err := database.Open(ctx, "app.db", database.WithConfig(cfg))
-// err: multiprocess WAL is incompatible with go-sqlite's MVCC mode
+err := db.Write(ctx, func(tx *sql.Tx) error {
+    var value int
+    if err := tx.QueryRowContext(ctx, "SELECT value FROM counters WHERE id=1").Scan(&value); err != nil {
+        return err
+    }
+    _, err := tx.ExecContext(ctx, "UPDATE counters SET value=? WHERE id=1", value+1)
+    return err
+})
 ```
 
-`WithDriver` is kept for source compatibility, but this package always uses the
-Turso driver and MVCC journal mode.
+`Write` starts `BEGIN IMMEDIATE` and commits on success. An error or panic
+rolls back the transaction. The panic continues. Read-modify-write operations cannot lose an update
+when every write uses this owner. `Read` runs a snapshot transaction and rolls
+it back on return or panic. Never hold `Rows` or a transaction open across slow
+work. Never call a writer helper inside a writer callback: its connection is
+already occupied.
 
-Each connection receives all configured PRAGMAs in `PragmaOrder`, followed by
-the remaining keys in sorted order. Every connection must report `journal_mode`
-as `mvcc`. With `StrictPragmas`, any PRAGMA error closes the new connection and
-fails the operation that requested it. Without it, other PRAGMA errors are ignored.
-
-## Memory
-
-Turso MVCC keeps row versions in native memory until its GC and checkpoint
-reclaim them. At Turso's own thresholds a steady write stream sat at 313–372 MiB
-in the lab; the package defaults (`mvcc_gc_threshold = 1024`,
-`mvcc_checkpoint_threshold = 262144`) hold the same workload at 171–192 MiB with
-no measurable throughput cost. Don't go lower than that: GC on every commit
-was 17–20× slower.
-
-The native library uses glibc `malloc`, which keeps freed memory in per-thread
-arenas. Run long-lived Turso services with `MALLOC_ARENA_MAX=2`; together with
-the defaults above, the lab workload dropped to 66–81 MiB. Evidence and the
-reproduction: `lab/turso-memory/OUTCOME.md`, `make lab-memory`.
-
-## Queries
+For sustained traffic, put the FIFO batching queue in front of the writer:
 
 ```go
-rows, err := db.Query(ctx, "SELECT id, email FROM users WHERE active = ?", true)
-if err != nil {
-	return err
-}
-defer rows.Close()
+queue := database.NewQueue(db, database.QueueOptions{})
+defer queue.Close() // drain before closing db
+err := queue.Submit(ctx, func(tx *sql.Tx) error {
+    _, err := tx.Exec("INSERT INTO events(value) VALUES(?)", "created")
+    return err
+})
 ```
 
-Never hold `Rows` or a `Tx` open across other work. An open reader pins its MVCC
-snapshot and prevents collection of old row versions. Close `Rows` promptly,
-including after partial reads. Commit or roll back each transaction promptly.
+Defaults are 64 operations per batch and a 1 ms collection window. Each callback
+has a savepoint: its error or panic rolls back only its own changes. A batch
+failure rolls back all operations. `Submit` returns success only after commit.
+Cancellation skips queued work; once work starts, `Submit` waits for its real
+result. Use only the supplied transaction and no cancellable SQL context inside
+a queue callback. `Close` stops admission and drains accepted operations.
 
-```go
-var email string
-err := db.QueryOne(ctx, "SELECT email FROM users WHERE id = ?", "user_123").Scan(&email)
-if errors.Is(err, sql.ErrNoRows) {
-	return nil
-}
-```
+## WAL and inspection
 
-```go
-_, err := db.Exec(ctx, "INSERT INTO users (id, email) VALUES (?, ?)", "user_123", "a@example.com")
-```
+One process owns writes to each physical file. Long reads pin the WAL. Route
+those reads through `Read` and call `Checkpoint(ctx, 50*time.Millisecond)` from
+one timer when needed. The checkpoint takes the writer and pauses new `Read` calls. It waits up to
+the quiet period for active reads. Then it truncates the WAL with the same
+bounded lock wait. It restores the writer's previous timeout. A busy result
+means a reader still pins the WAL; try again later. `Query`, `QueryOne`, direct
+reader calls and external readers bypass the quiet window. A transaction that
+never ends defeats every checkpoint.
 
-`Exec` rejects `WITHOUT ROWID` DDL because Turso MVCC cannot write those tables.
-If a plain SQLite database already contains `WITHOUT ROWID`, rebuild it into
-normal rowid tables before opening it with this package.
+Prefer the owner's API for live inspection. `sqlite3` can safely read SQLite WAL
+files or owner-produced snapshots. Never copy only the database file while WAL
+writes are active. Files in the older Turso format must be converted with
+`cmd/turso-convert`. `Open` rejects their marker or log sidecar before SQLite
+touches the file.
 
-## Write Concurrency
-
-One Go process with a pooled `*sql.DB` is the supported shape. For
-multi-statement concurrent writes, use `ConcurrentTxRetry` or `BEGIN CONCURRENT`
-on one reserved connection.
-
-Several Go processes writing the same DB file is not a `go-sqlite` promise. If
-you need multiple application writers, split the write domain or move writes
-behind one owner process.
-
-## See Also
-
-- [Turso operations](../../docs/turso-operations.md)
-- [Turso consumer guide](../../docs/turso-consumer-guide.md)
-- [query](../query/README.md)
-- [repository](../repository/README.md)
-- [migrations](../migrations/README.md)
+See [operations](../../docs/operations.md) for the supported load envelope and
+[consumer guide](../../docs/consumer-guide.md) for upgrading existing callers.
+The executable reference is [sqlite-writers](../../lab/sqlite-writers/README.md).
