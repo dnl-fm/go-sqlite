@@ -22,9 +22,11 @@ type Database struct {
 	config *Config
 	path   string
 	closed bool
-	mu     sync.RWMutex
-	reads  atomic.Int64
-	quiet  atomic.Bool
+	// readOnly marks an OpenReadOnly handle: writer is the reader pool.
+	readOnly bool
+	mu       sync.RWMutex
+	reads    atomic.Int64
+	quiet    atomic.Bool
 }
 
 // Option configures a Database before it opens.
@@ -64,7 +66,7 @@ func Open(ctx context.Context, path string, opts ...Option) (*Database, error) {
 			return nil, legacyErr
 		}
 	}
-	pragmas, err := checkedPragmas(ctx, target, d.config)
+	pragmas, err := checkedPragmas(ctx, target, d.config, false)
 	if err != nil {
 		return nil, err
 	}
@@ -139,6 +141,9 @@ func (d *Database) Exec(ctx context.Context, query string, args ...any) (sql.Res
 	if d.closed {
 		return nil, ErrClosed
 	}
+	if d.readOnly {
+		return nil, ErrReadOnly
+	}
 
 	result, err := d.writer.ExecContext(ctx, query, args...)
 	if err != nil {
@@ -160,6 +165,8 @@ func (d *Database) BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, e
 	pool := d.writer
 	if opts != nil && opts.ReadOnly {
 		pool = d.reader
+	} else if d.readOnly {
+		return nil, ErrReadOnly
 	}
 	tx, err := pool.BeginTx(ctx, opts)
 	if err != nil {
@@ -194,9 +201,11 @@ func (d *Database) Path() string {
 func (d *Database) Config() *Config { return d.config }
 
 // DB returns the writer; generic consumers can safely use it for reads or writes.
+// After OpenReadOnly it returns the reader pool, where SQLite rejects writes.
 func (d *Database) DB() *sql.DB { return d.writer }
 
-// Writer returns the single-connection write pool.
+// Writer returns the single-connection write pool. After OpenReadOnly it
+// returns the reader pool, where SQLite rejects writes.
 func (d *Database) Writer() *sql.DB { return d.writer }
 
 // Reader returns the read-only pool (the shared writer for in-memory paths).

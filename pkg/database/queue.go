@@ -59,7 +59,7 @@ type op struct {
 }
 
 // NewQueue starts the queue goroutine. Call Close to stop it; Close does not
-// close the Database.
+// close the Database. On an OpenReadOnly store every Submit returns ErrReadOnly.
 func NewQueue(store *Database, opts QueueOptions) *Queue {
 	if opts.MaxBatch <= 0 {
 		opts.MaxBatch = 64
@@ -90,6 +90,9 @@ func NewQueue(store *Database, opts QueueOptions) *Queue {
 // interrupted, which turns one canceled op into a failed batch. Calling
 // Submit or Database.Write from inside fn waits forever on the writer connection.
 func (q *Queue) Submit(ctx context.Context, fn func(*sql.Tx) error) error {
+	if q.store.readOnly {
+		return ErrReadOnly
+	}
 	o := &op{fn: fn, res: make(chan error, 1)}
 
 	q.mu.RLock()

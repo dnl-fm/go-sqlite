@@ -25,6 +25,9 @@ func (d *Database) Write(ctx context.Context, fn func(*sql.Tx) error) (err error
 			err = ctx.Err()
 		}
 	}()
+	if d.readOnly {
+		return ErrReadOnly
+	}
 	tx, err := d.writer.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -83,6 +86,9 @@ func (d *Database) Read(ctx context.Context, fn func(*sql.Tx) error) error {
 //
 // Like Write, never call it from inside a Write callback.
 func (d *Database) Checkpoint(ctx context.Context, quiet time.Duration) (bool, error) {
+	if d.readOnly {
+		return false, ErrReadOnly
+	}
 	// Take the writer first: closing the window while a long Write holds it
 	// would stall new reads for that whole Write, not just for quiet.
 	conn, err := d.writer.Conn(ctx)

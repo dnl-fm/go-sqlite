@@ -88,8 +88,8 @@ func orderedPragmas(cfg *Config) []string {
 
 // Check on the target before encoding: non-strict mode omits rejected settings.
 // Modernc reapplies the accepted list on every pooled connection via its DSN.
-func checkedPragmas(ctx context.Context, target *url.URL, cfg *Config) ([]string, error) {
-	probe, err := sql.Open("sqlite", connectionDSN(target, nil, false))
+func checkedPragmas(ctx context.Context, target *url.URL, cfg *Config, readOnly bool) ([]string, error) {
+	probe, err := sql.Open("sqlite", connectionDSN(target, nil, readOnly))
 	if err != nil {
 		return nil, err
 	}

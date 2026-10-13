@@ -14,6 +14,9 @@ var (
 
 	// ErrInvalidConfig is returned when the configuration is invalid
 	ErrInvalidConfig = errors.New("invalid configuration")
+
+	// ErrReadOnly is returned by write methods on a database from OpenReadOnly
+	ErrReadOnly = errors.New("database is read-only")
 )
 
 // QueryError wraps errors that occur during query execution

@@ -24,6 +24,48 @@ reader handle can write; SQLite cannot open a separate read-only in-memory
 connection that shares this private database. Finish each transaction before
 using another public helper on these paths.
 
+## Read-only open
+
+A process that does not own the file opens it with `OpenReadOnly`:
+
+```go
+db, err := database.OpenReadOnly(ctx, "/srv/prod/app/data/app.db")
+```
+
+It returns the same `*Database` with a reader pool only, sized by `MaxOpenConns`.
+`Query`, `QueryOne`, `Read`, `Reader()` and `BeginTx` with `ReadOnly: true` work.
+`Exec`, `Write`, any other `BeginTx`, `Checkpoint` and `Queue.Submit` return
+`ErrReadOnly`. `DB()` and `Writer()` return the reader pool, where SQLite's
+`mode=ro` rejects writes.
+
+The file must exist and be in WAL mode; `OpenReadOnly` never creates or
+switches it. A reader of a rollback-journal file would block the owner's
+writes. In-memory paths are an error. Turso-format files are refused as in `Open`.
+
+PRAGMA rule: `journal_mode` and `synchronous` belong to the owner and are never
+sent. Every other configured PRAGMA is tried on a `mode=ro` connection. SQLite
+rejects those that would write the file, such as `user_version = 7`. They are
+omitted, or fail the open with `WithStrictPragmas(true)`.
+
+## Custom SQL functions
+
+```go
+err := database.RegisterDeterministicScalarFunction("slug", 1,
+    func(_ *database.FunctionContext, args []driver.Value) (driver.Value, error) {
+        title, _ := args[0].(string)
+        return strings.ToLower(title), nil
+    })
+```
+
+`RegisterScalarFunction`, `RegisterDeterministicScalarFunction` and
+`RegisterFunction` (with `FunctionImpl`, also for aggregates) wrap modernc's
+registration. `FunctionContext`, `FunctionImpl` and `AggregateFunction` are
+aliases of its types, so no modernc import is necessary. Registration is
+process-global and a name registers once. Register before `Open` or
+`OpenReadOnly`: every connection opened afterwards has the function, on both
+pools. Connections that are already open never get it. Only a deterministic
+function can appear in an index expression or a generated column.
+
 ## Configuration
 
 `DefaultConfig`, `DevelopmentConfig` and `ProductionConfig` have the same defaults:

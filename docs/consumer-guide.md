@@ -18,6 +18,41 @@ File readers enforce read-only mode below the SQL layer. In-memory databases
 share one connection between both roles, so writes remain visible to reads.
 SQLite supports `WITHOUT ROWID` tables without an experimental flag.
 
+## Processes that do not own the file
+
+One process owns each file. Every other process opens it with
+`database.OpenReadOnly`. This replaces hand-rolled `sql.Open` calls with
+`mode=ro`: those skip the Turso-file refusal, the WAL check and the configured
+PRAGMAs.
+
+```go
+db, err := database.OpenReadOnly(ctx, path)
+```
+
+The handle reads through `Query`, `QueryOne`, `Read` and `Reader()`. Its write
+methods return `database.ErrReadOnly`, and SQLite rejects a write on any raw
+handle. The owner creates the file and sets WAL mode first: `OpenReadOnly`
+fails on a missing file or a rollback-journal file. `journal_mode` and
+`synchronous` stay with the owner. Other configured PRAGMAs apply unless they
+would write the file.
+
+A read-only open still needs SQLite's `-shm` file. While the owner runs, it
+exists and the reader needs no write permission. With the owner stopped and no
+`-shm` on disk, the reader must be able to create it. Without write access to
+the directory the open fails with `attempt to write a readonly database (1544)`.
+With write access it leaves an empty `-wal` and a `-shm` behind. Both are harmless.
+
+A read-only process still pins the WAL while a `Rows` or transaction is open.
+The owner's `Checkpoint` cannot pause readers in another process.
+
+## Custom SQL functions
+
+Use `database.RegisterDeterministicScalarFunction`, `RegisterScalarFunction` or
+`RegisterFunction` instead of importing modernc. Registration is process-global.
+Register before `Open` or `OpenReadOnly`. Every connection opened afterwards
+has the function, on both pools. Only a deterministic function can appear in
+an index expression or a generated column.
+
 ## What we support
 
 These limits come from [the writer lab](../lab/sqlite-writers/README.md#what-we-support),

@@ -31,6 +31,9 @@ connections by default). `DB()` and `Writer()` return the writer.
 `Reader()` returns the reader pool. `Query` and `QueryOne` use the reader.
 `Exec` and write transactions use the writer.
 
+A process that does not own the file opens it with `OpenReadOnly`: reads only, write methods return `ErrReadOnly`, the file must exist in WAL mode.
+Register custom SQL functions with `RegisterFunction` and its scalar variants before `Open` or `OpenReadOnly`; registration is process-global.
+
 Use `Write` for multi-statement writes and read-modify-write transactions.
 Use `Queue` for sustained traffic, FIFO writes, or group commits with
 `synchronous=FULL`. Use only the supplied transaction inside each callback.
